@@ -327,13 +327,30 @@
   }
   #kg-input:focus { border-color: var(--accent); outline: none; }
 
-  /* "Pagado por" select in the Gastos table */
-  .paid-by-sel {
+  /* "Pagado por" button (opens a searchable picker) in the Gastos table */
+  .paid-by-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
     width: 100%;
-    min-width: 96px;
-    padding: 5px 6px;
+    min-width: 110px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 6px 8px;
     font-size: 0.85rem;
+    cursor: pointer;
+    transition: border-color 0.15s;
   }
+  .paid-by-btn:hover { border-color: var(--accent); }
+  .paid-by-btn .pb-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .paid-by-btn .pb-caret { color: var(--text-muted); flex: none; }
+
+  /* Search input + scrollable list inside picker modals */
+  .picker-search { margin-bottom: 12px; }
+  .picker-list { max-height: 320px; overflow-y: auto; }
   /* Save-to-roster button in the link column */
   .roster-add-btn {
     background: none;
@@ -666,10 +683,25 @@
 <div class="overlay" id="roster-picker-overlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rp-title">
     <h2 id="rp-title">📒 Agregar del roster</h2>
-    <p class="modal-note">Tocá una persona guardada para agregarla a este asado.</p>
-    <div id="roster-picker-list"></div>
+    <p class="modal-note">Buscá y tocá una persona guardada para agregarla a este asado.</p>
+    <input type="text" id="rp-search" class="picker-search" placeholder="Buscar persona…" autocomplete="off"
+      oninput="renderRosterPicker(this.value)" onkeydown="onRosterPickerKey(event)">
+    <div id="roster-picker-list" class="picker-list"></div>
     <div class="modal-actions" style="margin-top:18px;">
       <button class="btn btn-ghost btn-row" onclick="closeRosterPicker()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- GENERIC SEARCHABLE PICKER (e.g. "Pagado por") -->
+<div class="overlay" id="picker-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="picker-title">
+    <h2 id="picker-title">Elegir</h2>
+    <input type="text" id="picker-search" class="picker-search" placeholder="Buscar…" autocomplete="off"
+      oninput="renderSearchPicker(this.value)" onkeydown="onSearchPickerKey(event)">
+    <div id="picker-list" class="picker-list"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn btn-ghost btn-row" onclick="closeSearchPicker()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -846,11 +878,28 @@
     return id;
   }
 
-  // <option> list of current participants for the "Pagado por" select.
-  function participantOptions(selectedId) {
-    return state.personas.map(p =>
-      `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${esc(p.nombre || '(sin nombre)')}</option>`
-    ).join('');
+  // Label shown on the "Pagado por" button of an expense.
+  function payerLabelText(g) {
+    if (g.paidBy) {
+      const p = state.personas.find(x => x.id === g.paidBy);
+      if (p) return esc(p.nombre || '(sin nombre)');
+    }
+    return '— Vos / todos';
+  }
+
+  // Open the searchable picker to choose who fronted this expense.
+  function openPayerPicker(gastoId) {
+    const g = state.gastos.find(x => x.id === gastoId);
+    if (!g) return;
+    const items = [{ value: '', label: '— Vos / todos', meta: '' }].concat(
+      state.personas.map(p => ({ value: p.id, label: p.nombre || '(sin nombre)', meta: p.comeCarne ? '🥩' : '' }))
+    );
+    openSearchPicker({
+      title: 'Pagado por',
+      placeholder: 'Buscar persona…',
+      items,
+      onPick: (value) => { onGastoChange(gastoId, 'paidBy', value); renderGastos(); }
+    });
   }
 
   function onGastoKey(e, id) {
@@ -893,10 +942,9 @@
           onkeydown="onGastoKey(event,'${g.id}')"></td>
         <td class="col-chk"><label class="chk"><input type="checkbox" aria-label="Es gasto de carne" ${g.esCarne ? 'checked' : ''}
           onchange="onGastoChange('${g.id}','esCarne',this.checked)"></label></td>
-        <td><select class="paid-by-sel" aria-label="Pagado por" onchange="onGastoChange('${g.id}','paidBy',this.value)">
-          <option value="">— Vos / todos</option>
-          ${participantOptions(g.paidBy)}
-        </select></td>
+        <td><button class="paid-by-btn" aria-label="Pagado por" onclick="openPayerPicker('${g.id}')">
+          <span class="pb-label">${payerLabelText(g)}</span><span class="pb-caret">▾</span>
+        </button></td>
         <td class="col-del"><button class="del-btn" aria-label="Borrar gasto" onclick="delGasto('${g.id}')">✕</button></td>
       </tr>
     `).join('');
@@ -998,14 +1046,23 @@
     return roster.filter(r => !used.has(r.id));
   }
 
-  function renderRosterPicker() {
+  let rpFiltered = [];
+  function rpQuery() { const s = document.getElementById('rp-search'); return s ? s.value : ''; }
+
+  function renderRosterPicker(q) {
+    const query = (q || '').trim().toLowerCase();
     const list = document.getElementById('roster-picker-list');
     const avail = rosterAvailable();
+    rpFiltered = avail.filter(r => !query || rosterFullName(r).toLowerCase().includes(query));
     if (!avail.length) {
       list.innerHTML = '<p class="empty">No quedan personas del roster para agregar.</p>';
       return;
     }
-    list.innerHTML = avail.map(r => `
+    if (!rpFiltered.length) {
+      list.innerHTML = '<p class="empty">Sin resultados.</p>';
+      return;
+    }
+    list.innerHTML = rpFiltered.map(r => `
       <button class="rp-item" onclick="addParticipantFromRoster('${r.id}')">
         <span>${esc(rosterFullName(r)) || '(sin nombre)'}</span>
         <span class="rp-meat">${r.come_carne ? '🥩 come carne' : 'no come carne'}</span>
@@ -1013,7 +1070,16 @@
     `).join('');
   }
 
-  function openRosterPicker() { renderRosterPicker(); document.getElementById('roster-picker-overlay').classList.add('open'); }
+  function onRosterPickerKey(e) {
+    if (e.key === 'Enter' && rpFiltered.length) { e.preventDefault(); addParticipantFromRoster(rpFiltered[0].id); }
+  }
+
+  function openRosterPicker() {
+    const s = document.getElementById('rp-search'); if (s) s.value = '';
+    renderRosterPicker('');
+    document.getElementById('roster-picker-overlay').classList.add('open');
+    setTimeout(() => { const el = document.getElementById('rp-search'); if (el) el.focus(); }, 30);
+  }
   function closeRosterPicker() { document.getElementById('roster-picker-overlay').classList.remove('open'); }
 
   function addParticipantFromRoster(rosterId) {
@@ -1022,10 +1088,53 @@
     state.personas.unshift({ id: uid(), personId: r.id, nombre: rosterFullName(r), comeCarne: !!r.come_carne, pagado: false });
     save();
     renderPersonas();
-    renderGastos();          // refresh "Pagado por" options
+    renderGastos();                 // refresh "Pagado por" options
     recalc();
-    renderRosterPicker();    // drop the just-added person from the picker
+    renderRosterPicker(rpQuery());  // drop the just-added person, keep the search
   }
+
+  // ---------------------------------------------------------------------------
+  // Generic searchable picker (single choice) — used by "Pagado por"
+  // ---------------------------------------------------------------------------
+  let pickerItems = [], pickerFiltered = [], pickerOnPick = null;
+
+  function openSearchPicker({ title, placeholder, items, onPick }) {
+    pickerItems = items || [];
+    pickerOnPick = onPick || null;
+    document.getElementById('picker-title').textContent = title || 'Elegir';
+    const s = document.getElementById('picker-search');
+    s.placeholder = placeholder || 'Buscar…';
+    s.value = '';
+    renderSearchPicker('');
+    document.getElementById('picker-overlay').classList.add('open');
+    setTimeout(() => s.focus(), 30);
+  }
+
+  function renderSearchPicker(q) {
+    const query = (q || '').trim().toLowerCase();
+    pickerFiltered = pickerItems.filter(it =>
+      !query || (it.label || '').toLowerCase().includes(query) || (it.meta || '').toLowerCase().includes(query));
+    const list = document.getElementById('picker-list');
+    if (!pickerFiltered.length) { list.innerHTML = '<p class="empty">Sin resultados.</p>'; return; }
+    list.innerHTML = pickerFiltered.map((it, i) => `
+      <button class="rp-item" onclick="pickerChoose(${i})">
+        <span>${esc(it.label)}</span>
+        ${it.meta ? `<span class="rp-meat">${esc(it.meta)}</span>` : ''}
+      </button>
+    `).join('');
+  }
+
+  function pickerChoose(index) {
+    const it = pickerFiltered[index];
+    const fn = pickerOnPick;
+    closeSearchPicker();
+    if (it && fn) fn(it.value);
+  }
+
+  function onSearchPickerKey(e) {
+    if (e.key === 'Enter' && pickerFiltered.length) { e.preventDefault(); pickerChoose(0); }
+  }
+  function closeSearchPicker() { document.getElementById('picker-overlay').classList.remove('open'); }
 
   function renderPersonas() {
     const tbody = document.getElementById('personas-body');
