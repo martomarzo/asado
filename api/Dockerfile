@@ -2,9 +2,9 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Install deps first for better layer caching (no lockfile → use npm install)
-COPY package.json ./
-RUN npm install --omit=dev
+# Install deps first for better layer caching. Use the lockfile for reproducible builds.
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 COPY . .
 

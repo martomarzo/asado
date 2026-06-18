@@ -42,6 +42,74 @@
 
   header p { color: var(--text-muted); margin-top: 4px; font-size: 0.9rem; }
 
+  /* Top toolbar (asado selector + connection state + settings) */
+  .toolbar {
+    max-width: 720px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .toolbar .tb-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  .toolbar .tb-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    outline: none;
+    max-width: 100%;
+    cursor: pointer;
+  }
+  select:focus { border-color: var(--accent); }
+
+  .icon-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    min-width: 38px;
+    min-height: 38px;
+    padding: 0 10px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--text); }
+
+  /* Connection / save status */
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .status .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--text-muted); flex: none;
+  }
+  .status.saving .dot { background: var(--accent); }
+  .status.saved  .dot { background: var(--green); }
+  .status.error  .dot { background: var(--red); }
+  .status.offline .dot { background: var(--text-muted); }
+
   /* Resumen (always visible) */
   .resumen-wrap {
     max-width: 720px;
@@ -76,6 +144,8 @@
     color: #fff;
     border-color: var(--accent);
   }
+
+  .tab-btn[hidden] { display: none; }
 
   .panel {
     max-width: 720px;
@@ -174,7 +244,7 @@
     transition: border-color 0.15s;
   }
 
-  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]:focus, input[type="date"]:focus, input[type="password"]:focus { border-color: var(--accent); }
 
   input[type="number"] {
     background: var(--surface2);
@@ -293,16 +363,96 @@
 
   .col-del { width: 36px; text-align: center; }
   .col-pay { width: 110px; text-align: center; }
+  .col-link { width: 28px; text-align: center; }
+  .link-dot { color: var(--accent); font-size: 0.9rem; }
+
+  /* Modal */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 16px;
+    z-index: 50;
+    overflow-y: auto;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+    width: 100%;
+    max-width: 460px;
+  }
+  .modal h2 { font-size: 1.15rem; margin-bottom: 16px; color: var(--accent); }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px; }
+  .field input { width: 100%; }
+  .field input[type="number"] { width: 100%; text-align: left; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .btn {
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-ghost { background: none; color: var(--text-muted); }
+  .btn-danger { color: var(--red); }
+  .btn-danger:hover { border-color: var(--red); }
+  .btn-row { margin-left: auto; }
+
+  .modal-note { font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px; }
+  .test-result { font-size: 0.84rem; margin-top: 8px; min-height: 1.2em; }
+  .test-result.ok { color: var(--green); }
+  .test-result.bad { color: var(--red); }
+  .modal-section {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .modal-section h3 { font-size: 0.9rem; margin-bottom: 8px; }
 
   /* Prevent iOS auto-zoom on focus; roomier rows on phones */
   @media (max-width: 700px) {
-    input[type="text"], input[type="number"] { font-size: 16px; }
+    input[type="text"], input[type="number"], input[type="date"], input[type="password"] { font-size: 16px; }
     .hero-value { font-size: 1.5rem; }
     td { padding: 10px 8px; }
   }
 </style>
 </head>
 <body>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="tb-left">
+    <!-- Online: asado selector -->
+    <span id="tb-online" style="display:none; align-items:center; gap:8px;">
+      <select id="asado-select" aria-label="Elegir asado" onchange="onSelectAsado(this.value)"></select>
+      <button class="icon-btn" title="Nuevo asado" aria-label="Nuevo asado" onclick="openAsadoModal('new')">＋</button>
+      <button class="icon-btn" title="Renombrar asado" aria-label="Renombrar asado" onclick="openAsadoModal('rename')">✎</button>
+      <button class="icon-btn" title="Borrar asado" aria-label="Borrar asado" onclick="deleteCurrentAsado()">🗑</button>
+    </span>
+    <!-- Offline: pill -->
+    <span id="tb-offline" class="status offline">
+      <span class="dot"></span> Modo offline (este navegador)
+    </span>
+  </div>
+  <div class="tb-right">
+    <span id="save-status" class="status" style="display:none;"><span class="dot"></span> <span class="status-text"></span></span>
+    <button class="icon-btn" title="Configuración / conexión" aria-label="Configuración" onclick="openSettings()">⚙️</button>
+  </div>
+</div>
 
 <header>
   <h1>🔥 Calculador de Asado</h1>
@@ -342,6 +492,7 @@
 <div class="tabs">
   <button class="tab-btn active" data-tab="gastos" onclick="showTab('gastos')">💸 Gastos</button>
   <button class="tab-btn" data-tab="personas" onclick="showTab('personas')">👥 Personas y Pagos</button>
+  <button class="tab-btn" data-tab="roster" id="tab-roster-btn" hidden onclick="showTab('roster')">📒 Roster</button>
 </div>
 
 <!-- TAB: GASTOS -->
@@ -368,10 +519,12 @@
 <div class="panel" data-tab="personas">
   <div class="card">
     <div class="card-title"><span>👥</span> Personas</div>
+    <p class="helper" id="personas-helper" style="display:none;">Empezá a escribir un nombre para recuperarlo del roster guardado.</p>
     <button class="add-btn add-btn-top" onclick="addPersona()">+ Agregar persona</button>
     <table id="personas-table">
       <thead>
         <tr>
+          <th class="col-link" title="Vinculada al roster"></th>
           <th>Nombre</th>
           <th class="col-chk" title="¿Come carne?">🥩 Carne</th>
           <th style="text-align:right">A Pagar</th>
@@ -386,36 +539,214 @@
   </div>
 </div>
 
+<!-- TAB: ROSTER (solo online) -->
+<div class="panel" data-tab="roster">
+  <div class="card">
+    <div class="card-title"><span>📒</span> Roster de personas</div>
+    <p class="helper">Personas guardadas para reusar entre asados. Editá el nombre o si come carne; se aplica al guardar.</p>
+    <button class="add-btn add-btn-top" onclick="addRosterPerson()">+ Agregar al roster</button>
+    <table id="roster-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th class="col-chk" title="¿Come carne?">🥩 Carne</th>
+          <th class="col-del"></th>
+        </tr>
+      </thead>
+      <tbody id="roster-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Datalist for roster autocomplete on participant names -->
+<datalist id="roster-datalist"></datalist>
+
+<!-- SETTINGS MODAL -->
+<div class="overlay" id="settings-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <h2 id="settings-title">⚙️ Conexión</h2>
+    <p class="modal-note">Conectá el servidor para guardar los asados fuera de este navegador y reusar el roster.
+      Dejá los campos vacíos para seguir en <b>modo offline</b> (solo este navegador).</p>
+    <div class="field">
+      <label for="cfg-url">URL del servidor (API base)</label>
+      <input type="text" id="cfg-url" placeholder="http://10.0.0.20:8787" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="cfg-token">Token (API_TOKEN)</label>
+      <input type="password" id="cfg-token" placeholder="bearer token" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="testConnection()">Probar conexión</button>
+      <button class="btn btn-ghost" onclick="goOffline()">Modo offline</button>
+      <button class="btn btn-primary btn-row" onclick="saveSettings()">Guardar</button>
+    </div>
+    <div class="test-result" id="cfg-test"></div>
+
+    <div class="modal-section" id="migrate-section" style="display:none;">
+      <h3>📥 Importar datos locales</h3>
+      <p class="modal-note" id="migrate-note">Hay datos guardados en este navegador (modo offline). Importalos a un asado nuevo en el servidor.</p>
+      <button class="btn" onclick="migrateLocal()">Importar a un asado nuevo</button>
+      <div class="test-result" id="migrate-result"></div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:18px;">
+      <button class="btn btn-ghost btn-row" onclick="closeSettings()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ASADO (new / rename) MODAL -->
+<div class="overlay" id="asado-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="asado-modal-title">
+    <h2 id="asado-modal-title">Nuevo asado</h2>
+    <div class="field">
+      <label for="asado-name">Nombre</label>
+      <input type="text" id="asado-name" placeholder="Asado del domingo" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="asado-date">Fecha (opcional)</label>
+      <input type="date" id="asado-date">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAsadoModal()">Cancelar</button>
+      <button class="btn btn-primary btn-row" id="asado-save-btn" onclick="submitAsadoModal()">Guardar</button>
+    </div>
+    <div class="test-result" id="asado-modal-result"></div>
+  </div>
+</div>
+
 <script>
-  const STORAGE_KEY = 'asado-v1';
+  // ---- Keys ----
+  const OFFLINE_KEY = 'asado-v1';        // offline single-state (also migration source)
+  const CFG_KEY = 'asado-api-config';    // { baseUrl, token }
+  const CURRENT_KEY = 'asado-current';   // last selected asado id (online)
+  const cachePrefix = (id) => 'asado-cache-' + id;
 
-  let state = {
-    gastos: [],
-    personas: []
-  };
+  // ---- App state ----
+  let state = { gastos: [], personas: [] };
+  let cfg = { baseUrl: '', token: '' };
 
-  function load() {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) state = JSON.parse(saved);
-    } catch(e) {}
-    if (!state.gastos) state.gastos = [];
-    if (!state.personas) state.personas = [];
+  // Online-only state
+  let asados = [];                        // [{id,name,event_date}]
+  let currentId = null;
+  let currentMeta = { name: '', event_date: null };
+  let roster = [];                        // [{id,name,come_carne}]
+
+  // ---------------------------------------------------------------------------
+  // Config / API helpers
+  // ---------------------------------------------------------------------------
+  function loadCfg() {
+    try { const s = localStorage.getItem(CFG_KEY); if (s) cfg = { baseUrl: '', token: '', ...JSON.parse(s) }; } catch (e) {}
+  }
+  function saveCfg() { try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {} }
+  function apiEnabled() { return !!(cfg.baseUrl && cfg.token); }
+  function apiBase() { return cfg.baseUrl.replace(/\/+$/, ''); }
+
+  async function api(method, path, body, tokenOverride, baseOverride) {
+    const base = (baseOverride != null ? baseOverride : cfg.baseUrl).replace(/\/+$/, '');
+    const token = tokenOverride != null ? tokenOverride : cfg.token;
+    const headers = {};
+    if (body != null) headers['Content-Type'] = 'application/json';
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(base + path, { method, headers, body: body != null ? JSON.stringify(body) : undefined });
+    if (!res.ok) {
+      let detail = '';
+      try { detail = await res.text(); } catch (e) {}
+      throw new Error('HTTP ' + res.status + (detail ? ': ' + detail.slice(0, 200) : ''));
+    }
+    const ct = res.headers.get('content-type') || '';
+    return ct.includes('json') ? res.json() : null;
   }
 
-  function save() {
+  // ---------------------------------------------------------------------------
+  // Model mapping (API <-> frontend)
+  // ---------------------------------------------------------------------------
+  function fromApiAsado(a) {
+    state = {
+      gastos: (a.expenses || []).map(e => ({
+        id: e.id, nombre: e.description || '',
+        precio: e.price == null || e.price === '' ? '' : Number(e.price),
+        esCarne: !!e.es_carne
+      })),
+      personas: (a.participants || []).map(p => ({
+        id: p.id, personId: p.person_id || null, nombre: p.name || '',
+        comeCarne: !!p.come_carne, pagado: !!p.pagado
+      }))
+    };
+    currentMeta = { name: a.name || '', event_date: a.event_date || null };
+  }
+
+  function toApiAsado() {
+    return {
+      name: currentMeta.name || 'Asado',
+      event_date: currentMeta.event_date || null,
+      expenses: state.gastos.map(g => ({
+        id: g.id, description: g.nombre || '', price: parseFloat(g.precio) || 0, es_carne: !!g.esCarne
+      })),
+      participants: state.personas.map(p => ({
+        id: p.id, person_id: p.personId || null, name: p.nombre || '',
+        come_carne: !!p.comeCarne, pagado: !!p.pagado
+      }))
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Persistence: localStorage cache + debounced server sync
+  // ---------------------------------------------------------------------------
+  function persistLocal() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      // localStorage puede estar bloqueado (ej. abriendo el archivo con file://).
-      // La app sigue funcionando en memoria aunque no se pueda guardar.
+      if (apiEnabled() && currentId) {
+        localStorage.setItem(cachePrefix(currentId), JSON.stringify({ meta: currentMeta, state }));
+      } else {
+        localStorage.setItem(OFFLINE_KEY, JSON.stringify(state));
+      }
+    } catch (e) {}
+  }
+
+  let saveTimer = null;
+  function save() {
+    persistLocal();
+    if (apiEnabled() && currentId) {
+      setSaveStatus('saving', 'Guardando…');
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(syncNow, 700);
     }
   }
 
-  function uid() {
-    return Math.random().toString(36).slice(2, 9);
+  async function syncNow() {
+    if (!(apiEnabled() && currentId)) return;
+    try {
+      await api('PUT', '/api/asados/' + encodeURIComponent(currentId), toApiAsado());
+      // keep the list label in sync if the name changed
+      const item = asados.find(a => a.id === currentId);
+      if (item) { item.name = currentMeta.name; item.event_date = currentMeta.event_date; }
+      setSaveStatus('saved', 'Guardado');
+    } catch (e) {
+      setSaveStatus('error', 'Sin guardar (offline)');
+      console.error(e);
+    }
   }
 
+  function setSaveStatus(kind, text) {
+    const el = document.getElementById('save-status');
+    if (!apiEnabled()) { el.style.display = 'none'; return; }
+    el.style.display = 'inline-flex';
+    el.className = 'status ' + kind;
+    el.querySelector('.status-text').textContent = text || '';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Generic helpers
+  // ---------------------------------------------------------------------------
+  function uid() { return Math.random().toString(36).slice(2, 9) + Math.random().toString(36).slice(2, 5); }
+
+  function esc(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Gastos
+  // ---------------------------------------------------------------------------
   function addGasto(nombre = '', precio = '', esCarne = false) {
     const id = uid();
     state.gastos.unshift({ id, nombre, precio, esCarne });
@@ -434,24 +765,6 @@
     }
   }
 
-  function addPersona(nombre = '', comeCarne = true, pagado = false) {
-    const id = uid();
-    state.personas.unshift({ id, nombre, comeCarne, pagado });
-    save();
-    renderPersonas();
-    recalc();
-    return id;
-  }
-
-  function onPersonaKey(e, id) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const newId = addPersona();
-      const el = document.getElementById('persona-name-' + newId);
-      if (el) el.focus();
-    }
-  }
-
   function delGasto(id) {
     state.gastos = state.gastos.filter(g => g.id !== id);
     save();
@@ -459,25 +772,10 @@
     recalc();
   }
 
-  function delPersona(id) {
-    state.personas = state.personas.filter(p => p.id !== id);
-    save();
-    renderPersonas();
-    recalc();
-  }
-
   function onGastoChange(id, field, value) {
     const g = state.gastos.find(g => g.id === id);
     if (!g) return;
     g[field] = value;
-    save();
-    recalc();
-  }
-
-  function onPersonaChange(id, field, value) {
-    const p = state.personas.find(p => p.id === id);
-    if (!p) return;
-    p[field] = value;
     save();
     recalc();
   }
@@ -503,16 +801,72 @@
     `).join('');
   }
 
+  // ---------------------------------------------------------------------------
+  // Personas (participants)
+  // ---------------------------------------------------------------------------
+  function addPersona(nombre = '', comeCarne = true, pagado = false) {
+    const id = uid();
+    state.personas.unshift({ id, personId: null, nombre, comeCarne, pagado });
+    save();
+    renderPersonas();
+    recalc();
+    return id;
+  }
+
+  function onPersonaKey(e, id) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const newId = addPersona();
+      const el = document.getElementById('persona-name-' + newId);
+      if (el) el.focus();
+    }
+  }
+
+  function delPersona(id) {
+    state.personas = state.personas.filter(p => p.id !== id);
+    save();
+    renderPersonas();
+    recalc();
+  }
+
+  function onPersonaChange(id, field, value) {
+    const p = state.personas.find(p => p.id === id);
+    if (!p) return;
+    p[field] = value;
+    // Editing the name by hand unlinks from the roster unless it still matches.
+    if (field === 'nombre') p.personId = null;
+    save();
+    recalc();
+  }
+
+  // On blur/change of the name: try to link to a roster person by exact name.
+  function onPersonaNameCommit(id, value) {
+    const p = state.personas.find(p => p.id === id);
+    if (!p) return;
+    const match = roster.find(r => r.name.trim().toLowerCase() === (value || '').trim().toLowerCase());
+    if (match) {
+      p.personId = match.id;
+      p.comeCarne = !!match.come_carne;
+      save();
+      renderPersonas();
+      recalc();
+    }
+  }
+
   function renderPersonas() {
     const tbody = document.getElementById('personas-body');
+    document.getElementById('personas-helper').style.display = apiEnabled() ? 'block' : 'none';
     if (state.personas.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty">No hay personas cargadas</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">No hay personas cargadas</td></tr>';
       return;
     }
+    const listAttr = apiEnabled() ? 'list="roster-datalist"' : '';
     tbody.innerHTML = state.personas.map(p => `
       <tr class="${p.pagado ? 'row-paid' : ''}">
-        <td><input type="text" id="persona-name-${p.id}" value="${esc(p.nombre)}" placeholder="Nombre"
+        <td class="col-link">${p.personId ? '<span class="link-dot" title="Vinculada al roster">●</span>' : ''}</td>
+        <td><input type="text" id="persona-name-${p.id}" value="${esc(p.nombre)}" placeholder="Nombre" ${listAttr}
           oninput="onPersonaChange('${p.id}','nombre',this.value)"
+          onchange="onPersonaNameCommit('${p.id}',this.value)"
           onkeydown="onPersonaKey(event,'${p.id}')"></td>
         <td class="col-chk" title="¿Come carne?"><label class="chk"><input type="checkbox" aria-label="Come carne" ${p.comeCarne ? 'checked' : ''}
           onchange="onPersonaChange('${p.id}','comeCarne',this.checked)"></label></td>
@@ -534,6 +888,9 @@
     recalc();
   }
 
+  // ---------------------------------------------------------------------------
+  // Calculation (unchanged math)
+  // ---------------------------------------------------------------------------
   function recalc() {
     const totalGastos = state.gastos.reduce((s, g) => s + (parseFloat(g.precio) || 0), 0);
     const totalCarne = state.gastos.filter(g => g.esCarne).reduce((s, g) => s + (parseFloat(g.precio) || 0), 0);
@@ -601,12 +958,8 @@
     return '$' + v.toLocaleString('es-AR', { minimumFractionDigits: isInt ? 0 : 2, maximumFractionDigits: 2 });
   }
 
-  function esc(s) {
-    return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-  }
-
   function resetAll() {
-    if (!confirm('¿Borrar todos los gastos y personas?')) return;
+    if (!confirm('¿Borrar todos los gastos y personas de este asado?')) return;
     state = { gastos: [], personas: [] };
     save();
     renderGastos();
@@ -614,6 +967,15 @@
     recalc();
   }
 
+  function renderAll() {
+    renderGastos();
+    renderPersonas();
+    recalc();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tabs
+  // ---------------------------------------------------------------------------
   function showTab(name) {
     document.querySelectorAll('.panel').forEach(p =>
       p.classList.toggle('active', p.dataset.tab === name));
@@ -622,26 +984,344 @@
     try { localStorage.setItem('asado-tab', name); } catch (e) {}
   }
 
+  // ---------------------------------------------------------------------------
+  // Online mode: asados list + load + create + rename + delete
+  // ---------------------------------------------------------------------------
+  function renderAsadoSelect() {
+    const sel = document.getElementById('asado-select');
+    sel.innerHTML = asados.map(a => {
+      const label = (a.name || 'Asado') + (a.event_date ? ' · ' + a.event_date : '');
+      return `<option value="${esc(a.id)}" ${a.id === currentId ? 'selected' : ''}>${esc(label)}</option>`;
+    }).join('');
+  }
+
+  function reflectMode() {
+    const online = apiEnabled();
+    document.getElementById('tb-online').style.display = online ? 'inline-flex' : 'none';
+    document.getElementById('tb-offline').style.display = online ? 'none' : 'inline-flex';
+    document.getElementById('tab-roster-btn').hidden = !online;
+    if (!online && document.querySelector('.tab-btn.active')?.dataset.tab === 'roster') showTab('gastos');
+    setSaveStatus('saved', 'Conectado');
+    if (!online) document.getElementById('save-status').style.display = 'none';
+  }
+
+  async function onSelectAsado(id) {
+    if (id === currentId) return;
+    try { await syncNow(); } catch (e) {}
+    clearTimeout(saveTimer);
+    await loadAsado(id);
+  }
+
+  async function loadAsado(id) {
+    currentId = id;
+    try { localStorage.setItem(CURRENT_KEY, id); } catch (e) {}
+    try {
+      const a = await api('GET', '/api/asados/' + encodeURIComponent(id));
+      fromApiAsado(a);
+      persistLocal();
+      setSaveStatus('saved', 'Guardado');
+    } catch (e) {
+      // fall back to local cache for this asado
+      try {
+        const cached = JSON.parse(localStorage.getItem(cachePrefix(id)) || 'null');
+        if (cached) { state = cached.state; currentMeta = cached.meta; }
+      } catch (_) {}
+      setSaveStatus('error', 'Sin conexión — datos en caché');
+    }
+    renderAsadoSelect();
+    renderAll();
+  }
+
+  async function createAsado(name, date) {
+    const id = uid();
+    await api('POST', '/api/asados', { id, name, event_date: date || null });
+    asados.unshift({ id, name, event_date: date || null });
+    currentId = id;
+    currentMeta = { name, event_date: date || null };
+    state = { gastos: [], personas: [] };
+    try { localStorage.setItem(CURRENT_KEY, id); } catch (e) {}
+    persistLocal();
+    renderAsadoSelect();
+    renderAll();
+    return id;
+  }
+
+  async function deleteCurrentAsado() {
+    if (!currentId) return;
+    const a = asados.find(x => x.id === currentId);
+    if (!confirm('¿Borrar el asado "' + (a ? a.name : '') + '"? No se puede deshacer.')) return;
+    try {
+      await api('DELETE', '/api/asados/' + encodeURIComponent(currentId));
+    } catch (e) { alert('No se pudo borrar: ' + e.message); return; }
+    try { localStorage.removeItem(cachePrefix(currentId)); } catch (_) {}
+    asados = asados.filter(x => x.id !== currentId);
+    clearTimeout(saveTimer);
+    if (asados.length) {
+      await loadAsado(asados[0].id);
+    } else {
+      await createAsado('Asado', null);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Roster (people)
+  // ---------------------------------------------------------------------------
+  async function loadRoster() {
+    if (!apiEnabled()) return;
+    try {
+      roster = await api('GET', '/api/people');
+    } catch (e) { roster = []; }
+    renderRoster();
+    updateDatalist();
+  }
+
+  function updateDatalist() {
+    document.getElementById('roster-datalist').innerHTML =
+      roster.map(r => `<option value="${esc(r.name)}">`).join('');
+  }
+
+  function renderRoster() {
+    const tbody = document.getElementById('roster-body');
+    if (roster.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty">El roster está vacío</td></tr>';
+      return;
+    }
+    tbody.innerHTML = roster.map(r => `
+      <tr>
+        <td><input type="text" value="${esc(r.name)}" placeholder="Nombre"
+          onchange="updateRosterPerson('${r.id}','name',this.value)"></td>
+        <td class="col-chk"><label class="chk"><input type="checkbox" aria-label="Come carne" ${r.come_carne ? 'checked' : ''}
+          onchange="updateRosterPerson('${r.id}','come_carne',this.checked)"></label></td>
+        <td class="col-del"><button class="del-btn" aria-label="Quitar del roster" onclick="deleteRosterPerson('${r.id}')">✕</button></td>
+      </tr>
+    `).join('');
+  }
+
+  async function addRosterPerson() {
+    const id = uid();
+    const person = { id, name: '', come_carne: true };
+    roster.unshift(person);
+    renderRoster();
+    try { await api('POST', '/api/people', person); } catch (e) {}
+    updateDatalist();
+  }
+
+  async function updateRosterPerson(id, field, value) {
+    const r = roster.find(r => r.id === id);
+    if (!r) return;
+    r[field] = value;
+    try {
+      await api('PUT', '/api/people/' + encodeURIComponent(id), { name: r.name, come_carne: !!r.come_carne });
+    } catch (e) {}
+    updateDatalist();
+    // keep linked participants' names in sync visually on next render
+  }
+
+  async function deleteRosterPerson(id) {
+    roster = roster.filter(r => r.id !== id);
+    renderRoster();
+    updateDatalist();
+    try { await api('DELETE', '/api/people/' + encodeURIComponent(id)); } catch (e) {}
+  }
+
+  // ---------------------------------------------------------------------------
+  // Settings modal
+  // ---------------------------------------------------------------------------
+  function openSettings() {
+    document.getElementById('cfg-url').value = cfg.baseUrl || '';
+    document.getElementById('cfg-token').value = cfg.token || '';
+    document.getElementById('cfg-test').textContent = '';
+    document.getElementById('cfg-test').className = 'test-result';
+    // Migration section: offer when there is offline data to import.
+    let hasOffline = false;
+    try {
+      const s = JSON.parse(localStorage.getItem(OFFLINE_KEY) || 'null');
+      hasOffline = !!(s && ((s.gastos && s.gastos.length) || (s.personas && s.personas.length)));
+    } catch (e) {}
+    document.getElementById('migrate-section').style.display = hasOffline ? 'block' : 'none';
+    document.getElementById('migrate-note').textContent = apiEnabled()
+      ? 'Hay datos guardados en este navegador (modo offline). Importalos a un asado nuevo en el servidor.'
+      : 'Hay datos locales, pero primero guardá una conexión al servidor para poder importarlos.';
+    document.getElementById('migrate-result').textContent = '';
+    document.getElementById('settings-overlay').classList.add('open');
+  }
+  function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
+
+  async function testConnection() {
+    const url = document.getElementById('cfg-url').value.trim();
+    const token = document.getElementById('cfg-token').value.trim();
+    const out = document.getElementById('cfg-test');
+    out.className = 'test-result';
+    out.textContent = 'Probando…';
+    if (!url) { out.className = 'test-result bad'; out.textContent = 'Falta la URL.'; return; }
+    try {
+      const base = url.replace(/\/+$/, '');
+      const health = await api('GET', '/api/health', null, '', base);
+      if (!health || !health.ok) throw new Error('respuesta inesperada');
+      // Auth check (needs token)
+      await api('GET', '/api/people', null, token, base);
+      out.className = 'test-result ok';
+      out.textContent = '✓ Conexión OK' + (token ? ' y token válido.' : ' (falta el token).');
+    } catch (e) {
+      out.className = 'test-result bad';
+      out.textContent = '✕ ' + e.message;
+    }
+  }
+
+  function saveSettings() {
+    const url = document.getElementById('cfg-url').value.trim();
+    const token = document.getElementById('cfg-token').value.trim();
+    cfg = { baseUrl: url, token: token };
+    saveCfg();
+    // Re-initialize cleanly for the new mode.
+    location.reload();
+  }
+
+  function goOffline() {
+    cfg = { baseUrl: '', token: '' };
+    saveCfg();
+    location.reload();
+  }
+
+  async function migrateLocal() {
+    const out = document.getElementById('migrate-result');
+    out.className = 'test-result';
+    if (!apiEnabled()) { out.className = 'test-result bad'; out.textContent = 'Guardá una conexión primero.'; return; }
+    let offline;
+    try { offline = JSON.parse(localStorage.getItem(OFFLINE_KEY) || 'null'); } catch (e) {}
+    if (!offline) { out.className = 'test-result bad'; out.textContent = 'No hay datos locales.'; return; }
+    out.textContent = 'Importando…';
+    try {
+      const id = uid();
+      await api('POST', '/api/asados', { id, name: 'Importado', event_date: null });
+      currentId = id;
+      currentMeta = { name: 'Importado', event_date: null };
+      state = {
+        gastos: (offline.gastos || []).map(g => ({ id: g.id || uid(), nombre: g.nombre || '', precio: g.precio || '', esCarne: !!g.esCarne })),
+        personas: (offline.personas || []).map(p => ({ id: p.id || uid(), personId: null, nombre: p.nombre || '', comeCarne: p.comeCarne !== false, pagado: !!p.pagado }))
+      };
+      asados.unshift({ id, name: 'Importado', event_date: null });
+      try { localStorage.setItem(CURRENT_KEY, id); } catch (e) {}
+      await api('PUT', '/api/asados/' + encodeURIComponent(id), toApiAsado());
+      persistLocal();
+      renderAsadoSelect();
+      renderAll();
+      out.className = 'test-result ok';
+      out.textContent = '✓ Importado a un asado nuevo ("Importado").';
+    } catch (e) {
+      out.className = 'test-result bad';
+      out.textContent = '✕ ' + e.message;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Asado new/rename modal
+  // ---------------------------------------------------------------------------
+  let asadoModalMode = 'new';
+  function openAsadoModal(mode) {
+    asadoModalMode = mode;
+    document.getElementById('asado-modal-title').textContent = mode === 'new' ? 'Nuevo asado' : 'Renombrar asado';
+    document.getElementById('asado-name').value = mode === 'rename' ? (currentMeta.name || '') : '';
+    document.getElementById('asado-date').value = mode === 'rename' ? (currentMeta.event_date || '') : '';
+    document.getElementById('asado-modal-result').textContent = '';
+    document.getElementById('asado-overlay').classList.add('open');
+    setTimeout(() => document.getElementById('asado-name').focus(), 30);
+  }
+  function closeAsadoModal() { document.getElementById('asado-overlay').classList.remove('open'); }
+
+  async function submitAsadoModal() {
+    const name = document.getElementById('asado-name').value.trim();
+    const date = document.getElementById('asado-date').value || null;
+    const out = document.getElementById('asado-modal-result');
+    out.className = 'test-result';
+    if (!name) { out.className = 'test-result bad'; out.textContent = 'Poné un nombre.'; return; }
+    try {
+      if (asadoModalMode === 'new') {
+        await syncNow();
+        clearTimeout(saveTimer);
+        await createAsado(name, date);
+      } else {
+        currentMeta.name = name;
+        currentMeta.event_date = date;
+        await syncNow();
+        renderAsadoSelect();
+      }
+      closeAsadoModal();
+    } catch (e) {
+      out.className = 'test-result bad';
+      out.textContent = '✕ ' + e.message;
+    }
+  }
+
+  // Close modals on overlay backdrop click
+  document.querySelectorAll('.overlay').forEach(ov => {
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.classList.remove('open'); });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.overlay.open').forEach(o => o.classList.remove('open'));
+  });
+
+  // ---------------------------------------------------------------------------
   // Init
-  load();
-  renderGastos();
-  renderPersonas();
-  recalc();
+  // ---------------------------------------------------------------------------
+  function initOffline() {
+    try {
+      const saved = localStorage.getItem(OFFLINE_KEY);
+      if (saved) state = JSON.parse(saved);
+    } catch (e) {}
+    if (!state.gastos) state.gastos = [];
+    if (!state.personas) state.personas = [];
+    // normalize legacy persona shape
+    state.personas.forEach(p => { if (p.personId === undefined) p.personId = null; });
+
+    renderAll();
+
+    // Pre-populate from the original spreadsheet if empty.
+    // addGasto prepends, so seed in reverse to keep Carbón first on screen.
+    if (state.gastos.length === 0 && state.personas.length === 0) {
+      addGasto('Hielo', 20, false);
+      addGasto('Picada', 20, false);
+      addGasto('Verduras', 50, false);
+      addGasto('Carne', 150, true);
+      addGasto('Tablas', 21, false);
+      addGasto('Carbón', 60, false);
+    }
+  }
+
+  async function initOnline() {
+    try {
+      asados = await api('GET', '/api/asados');
+    } catch (e) {
+      setSaveStatus('error', 'Sin conexión al servidor');
+      // Fall back to offline view so the app still works.
+      initOffline();
+      return;
+    }
+    loadRoster(); // fire and forget
+    if (!asados.length) {
+      await createAsado('Asado', null);
+    } else {
+      let lastId = null;
+      try { lastId = localStorage.getItem(CURRENT_KEY); } catch (e) {}
+      currentId = asados.find(a => a.id === lastId) ? lastId : asados[0].id;
+      await loadAsado(currentId);
+    }
+    setSaveStatus('saved', 'Conectado');
+  }
+
+  // Boot
+  loadCfg();
+  reflectMode();
+  if (apiEnabled()) {
+    initOnline();
+  } else {
+    initOffline();
+  }
 
   let savedTab = 'gastos';
   try { savedTab = localStorage.getItem('asado-tab') || 'gastos'; } catch (e) {}
+  if (savedTab === 'roster' && !apiEnabled()) savedTab = 'gastos';
   showTab(savedTab);
-
-  // Pre-populate from the original spreadsheet if empty.
-  // addGasto prepends, so seed in reverse to keep Carbón first on screen.
-  if (state.gastos.length === 0 && state.personas.length === 0) {
-    addGasto('Hielo', 20, false);
-    addGasto('Picada', 20, false);
-    addGasto('Verduras', 50, false);
-    addGasto('Carne', 150, true);
-    addGasto('Tablas', 21, false);
-    addGasto('Carbón', 60, false);
-  }
 </script>
 </body>
 </html>

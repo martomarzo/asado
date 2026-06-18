@@ -82,31 +82,34 @@ Primary keys are **client-supplied text ids** (frontend already generates them),
 - [x] Docker packaging (Dockerfile, compose, .dockerignore)
 - [x] Deploy runbook (`api/README.md`)
 - [x] Project split into its own folder
+- [x] **Frontend rework** — settings, asado selector, debounced server save,
+      roster recall + datalist, one-time localStorage migration (see below)
+- [x] git repo for this folder (pushed to GitHub: `martomarzo/asado`)
 - [ ] **Create `asado` DB + user on the Postgres LXC** (see Deploy step 1)
 - [ ] **Deploy the API container on the Docker VM** (see Deploy step 2)
 - [ ] Confirm `/api/health` reachable from the LAN
-- [ ] **Frontend rework** (the big remaining piece — see below)
-- [ ] (optional) git repo for this folder
 - [ ] (optional) host `web/index.html` somewhere on the LAN
 
-## Frontend rework — TODO (next major step)
+## Frontend rework — DONE
 
-Build only once the API is reachable, so it can be verified end-to-end:
+All built into `web/index.html` (still a single vanilla-JS file):
 
-1. **Settings**: a small gear to set API base URL + token, saved in localStorage.
-   If unset → app runs in offline localStorage mode (current behavior).
-2. **Asado selector**: dropdown to pick / create / rename / delete an asado.
-   Loads `GET /api/asados/:id` into the current state.
-3. **Save**: replace `save()` with a debounced `PUT /api/asados/:id` (whole state).
-   Keep localStorage as offline cache / fallback.
-4. **Roster recall**: when adding a participant, autocomplete from `GET /api/people`
-   (datalist). Picking one links `person_id` + copies name/come_carne. A "Roster"
-   view to manage saved people (add/edit/remove).
-5. **Migration**: one-time "import my current localStorage data into an asado" so
-   nothing already entered is lost.
+1. **Settings** ✅ — gear (⚙️) opens a modal to set API base URL + token (saved in
+   localStorage under `asado-api-config`), with a "Probar conexión" test and a
+   "Modo offline" button. Unset → app runs in offline localStorage mode (unchanged).
+2. **Asado selector** ✅ — toolbar `<select>` to pick an asado, plus ＋ new / ✎ rename
+   / 🗑 delete. Loads `GET /api/asados/:id` into state; remembers the last one.
+3. **Save** ✅ — `save()` writes a localStorage cache immediately, then debounces
+   (700ms) a `PUT /api/asados/:id` of the whole state. A status dot shows
+   saving/saved/error; on error it falls back to the local cache.
+4. **Roster recall** ✅ — participant name inputs autocomplete from `GET /api/people`
+   via a `<datalist>`; an exact name match links `person_id` and copies `come_carne`
+   (● marks linked rows). A "📒 Roster" tab (online only) manages saved people.
+5. **Migration** ✅ — Settings → "Importar datos locales" creates a new "Importado"
+   asado from the old localStorage data (non-destructive).
 
-Preserve everything already polished: tabs, always-visible Resumen, round-up,
-paid-row styling, Enter-to-add, accessibility.
+Preserved: tabs, always-visible Resumen, round-up math, paid-row styling,
+Enter-to-add, accessibility (aria labels / pressed states).
 
 ## Deploy
 
