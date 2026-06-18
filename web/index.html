@@ -499,35 +499,85 @@
   }
   .modal-section h3 { font-size: 0.9rem; margin-bottom: 8px; }
 
-  /* Prevent iOS auto-zoom on focus; roomier rows on phones */
+  /* ---------------------------------------------------------------------
+     Mobile cards. On phones the dense desktop tables are replaced by
+     compact, read-only cards (one line each) so long lists stay scannable
+     and scrolling can't accidentally change a value — editing happens in a
+     modal via the ✎ button. Desktop keeps the inline-editable tables.
+     --------------------------------------------------------------------- */
+  .cards { display: none; }          /* shown only under the mobile breakpoint */
+  .mobile-add { display: none; }     /* the card-mode "+ Agregar" button */
+
+  .mcard {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface2);
+    margin-bottom: 7px;
+  }
+  .mcard-main { flex: 1; min-width: 0; }
+  .mcard-title { font-size: 0.95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mcard-sub { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .mcard-amt { font-size: 1rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; flex: none; }
+  .mcard-amt.neg { color: var(--green); }
+  .mcard-meat { flex: none; font-size: 1rem; line-height: 1; }
+  .mcard-edit {
+    flex: none;
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text-muted); font-size: 1.05rem; cursor: pointer;
+  }
+  .mcard-edit:hover { border-color: var(--accent); color: var(--accent); }
+  .mcard.row-paid { opacity: 0.72; }
+  .mcard.row-paid .mcard-title, .mcard.row-paid .mcard-amt { color: var(--text-muted); text-decoration: line-through; }
+  .mcard-link { flex: none; color: var(--accent); font-size: 0.85rem; }
+
+  /* Toggle pill (carne / come carne / pagó) — a big, self-labeling tap
+     target that replaces the tiny checkbox inside the edit modals. */
+  .pill {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%;
+    min-height: 46px; padding: 10px 16px;
+    border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text-muted);
+    font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .pill.on { background: rgba(232,98,26,0.16); border-color: var(--accent); color: var(--accent); }
+  .pill.on.pill-green { background: rgba(46,204,113,0.16); border-color: var(--green); color: var(--green); }
+
+  /* Compact, auto-width pill for inline use in the desktop Gente table. */
+  .pill-sm { width: auto; min-height: 36px; padding: 7px 14px; font-size: 0.84rem; }
+
+  /* Desktop Gente row: cap the name input (it used to stretch the whole row)
+     and let the carne cell absorb the slack, which also pushes the delete
+     button well away from the other controls (harder to mis-click). */
+  .gente-name { min-width: 200px; max-width: 300px; }
+  #gente-table td.gente-carne { width: 100%; }
+
+  /* Set the inline delete column apart so it isn't flush against the last
+     control in the row — a divider + breathing room before the ✕. */
+  td.col-del { border-left: 1px solid var(--border); padding-left: 14px; }
+
+  /* Prevent iOS auto-zoom on focus; swap tables for cards on phones */
   @media (max-width: 700px) {
     input[type="text"], input[type="number"], input[type="date"], input[type="password"] { font-size: 16px; }
     .hero-value { font-size: 1.5rem; }
+    td { padding: 10px 8px; }
 
-    /* Tighten the data tables so all columns fit a phone without
-       sideways scroll. The Gastos row is the widest (it has the
-       "Pagado por" picker), so trim fixed widths and padding there. */
-    th, td { padding: 10px 5px; }
-    table { font-size: 0.84rem; }
-    .col-chk { width: 42px; }
-    .col-del { width: 26px; }
-    .col-link { width: 24px; }
-    .col-pay { width: auto; }
-    .pay-btn { min-width: 0; padding: 8px 10px; }
-    .paid-by-btn { min-width: 0; padding: 6px 7px; }
+    /* Hide the dense desktop tables + their inline add buttons; show the
+       compact card list and its modal-based add button instead. */
+    .only-desktop { display: none !important; }
+    .cards { display: block; }
+    .mobile-add { display: block; }
 
-    /* Smaller, wrappable headers so the uppercase labels don't collide
-       once columns get narrow on a phone. */
-    th { font-size: 0.68rem; letter-spacing: 0; padding: 8px 5px; white-space: normal; }
-
-    /* Gastos has two inputs + a picker button; fixed layout lets the
-       width:100% controls shrink to their columns instead of forcing
-       the table wider than the screen (the Personas table fits as-is).
-       Explicit widths favour Descripción + Pagado por; Precio stays narrow. */
-    #gastos-table { table-layout: fixed; }
-    #gastos-table input[type="number"] { width: 100%; }
-    #gastos-table th:nth-child(2), #gastos-table td:nth-child(2) { width: 58px; }
-    #gastos-table th:nth-child(4), #gastos-table td:nth-child(4) { width: 92px; }
+    /* Compact the tab bar so 4 tabs (with Roster, online) fit a phone. */
+    .tabs { gap: 6px; }
+    .tab-btn { padding: 11px 6px; font-size: 0.9rem; }
   }
 </style>
 </head>
@@ -584,9 +634,7 @@
       <span>Carne <b id="stat-carne">$0</b></span>
       <span>Sin carne <b id="stat-sin-carne">$0</b></span>
       <span><b id="stat-personas">0</b> personas · <b id="stat-comen-carne">0</b> comen carne</span>
-      <span>🥩 Comprar <b id="stat-kg">0 kg</b>
-        · <input type="number" id="kg-input" min="0" step="50" value="400" aria-label="Gramos de carne por persona"
-            onchange="onKgChange(this.value)"> g/persona</span>
+      <span>🥩 Comprar <b id="stat-kg">0 kg</b> <span id="stat-kg-sub" class="amount-muted"></span></span>
       <span class="sobra" id="stat-sobra"></span>
     </div>
   </div>
@@ -594,8 +642,8 @@
 
 <div class="tabs">
   <button class="tab-btn active" data-tab="gastos" onclick="showTab('gastos')">💸 Gastos</button>
-  <button class="tab-btn" data-tab="personas" onclick="showTab('personas')">👥 Personas y Pagos</button>
-  <button class="tab-btn" data-tab="roster" id="tab-roster-btn" hidden onclick="showTab('roster')">📒 Roster</button>
+  <button class="tab-btn" data-tab="gente" onclick="showTab('gente')">👥 Gente</button>
+  <button class="tab-btn" data-tab="cobrar" onclick="showTab('cobrar')">💵 Cobrar</button>
 </div>
 
 <!-- TAB: GASTOS -->
@@ -604,64 +652,82 @@
     <div class="card-title"><span>💸</span> Gastos</div>
     <p class="helper">Marcá 🥩 en los gastos de carne: se reparten solo entre los que comen carne. El resto se divide entre todos.
       Asigná un gasto a quien lo pagó para descontárselo de lo que te debe.</p>
-    <button class="add-btn add-btn-top" onclick="addGasto()">+ Agregar gasto</button>
-    <table id="gastos-table">
-      <thead>
-        <tr>
-          <th>Descripción</th>
-          <th style="text-align:right">Precio ($)</th>
-          <th class="col-chk" title="¿Es un gasto de carne?">🥩 Carne</th>
-          <th title="¿Quién lo pagó? Se le descuenta de lo que debe">Pagado por</th>
-          <th class="col-del"></th>
-        </tr>
-      </thead>
-      <tbody id="gastos-body"></tbody>
-    </table>
+
+    <!-- Mobile: compact cards, edit in a modal (no accidental edits) -->
+    <button class="add-btn add-btn-top mobile-add" onclick="openGastoModal('new')">+ Agregar gasto</button>
+    <div class="cards" id="gastos-cards"></div>
+
+    <!-- Desktop: inline-editable table -->
+    <div class="only-desktop">
+      <button class="add-btn add-btn-top" onclick="addGasto()">+ Agregar gasto</button>
+      <table id="gastos-table">
+        <thead>
+          <tr>
+            <th>Descripción</th>
+            <th style="text-align:right">Precio ($)</th>
+            <th class="col-chk" title="¿Es un gasto de carne?">🥩 Carne</th>
+            <th title="¿Quién lo pagó? Se le descuenta de lo que debe">Pagado por</th>
+            <th class="col-del"></th>
+          </tr>
+        </thead>
+        <tbody id="gastos-body"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
-<!-- TAB: PERSONAS Y PAGOS -->
-<div class="panel" data-tab="personas">
+<!-- TAB: GENTE (quiénes van — define cuánta carne comprar) -->
+<div class="panel" data-tab="gente">
   <div class="card">
-    <div class="card-title"><span>👥</span> Personas</div>
-    <p class="helper" id="personas-helper" style="display:none;">Empezá a escribir un nombre para recuperarlo del roster guardado.</p>
-    <button class="add-btn add-btn-top" onclick="addPersona()">+ Agregar persona</button>
-    <button class="add-btn add-btn-top" id="btn-add-from-roster" style="display:none" onclick="openRosterPicker()">📒 Agregar del roster</button>
-    <table id="personas-table">
-      <thead>
-        <tr>
-          <th class="col-link" title="Vinculada al roster"></th>
-          <th>Nombre</th>
-          <th class="col-chk" title="¿Come carne?">🥩 Carne</th>
-          <th style="text-align:right">A Pagar</th>
-          <th class="col-chk" title="¿Pagó?">✓ Pagó</th>
-          <th class="col-del"></th>
-        </tr>
-      </thead>
-      <tbody id="personas-body"></tbody>
-    </table>
+    <div class="card-title"><span>👥</span> Gente</div>
+    <p class="helper">Quiénes van al asado. Marcá quién come carne para saber cuánta comprar.</p>
+
+    <!-- Mobile -->
+    <button class="add-btn add-btn-top mobile-add" onclick="onAddPersona()">+ Agregar persona</button>
+    <div class="cards" id="gente-cards"></div>
+
+    <!-- Desktop -->
+    <div class="only-desktop">
+      <button class="add-btn add-btn-top" onclick="onAddPersona()">+ Agregar persona</button>
+      <table id="gente-table">
+        <thead>
+          <tr>
+            <th class="col-link" title="Vinculada al roster"></th>
+            <th>Nombre</th>
+            <th class="gente-carne" title="¿Come carne?">🥩 Carne</th>
+            <th class="col-del"></th>
+          </tr>
+        </thead>
+        <tbody id="gente-body"></tbody>
+      </table>
+    </div>
 
     <button class="reset-btn" onclick="resetAll()">🗑 Borrar todo</button>
   </div>
 </div>
 
-<!-- TAB: ROSTER (solo online) -->
-<div class="panel" data-tab="roster">
+<!-- TAB: COBRAR (settlement — read-only amounts + pay toggle) -->
+<div class="panel" data-tab="cobrar">
   <div class="card">
-    <div class="card-title"><span>📒</span> Roster de personas</div>
-    <p class="helper">Personas guardadas para reusar entre asados. Editá el nombre o si come carne; se aplica al guardar.</p>
-    <button class="add-btn add-btn-top" onclick="addRosterPerson()">+ Agregar al roster</button>
-    <table id="roster-table">
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Apellido</th>
-          <th class="col-chk" title="¿Come carne?">🥩 Carne</th>
-          <th class="col-del"></th>
-        </tr>
-      </thead>
-      <tbody id="roster-body"></tbody>
-    </table>
+    <div class="card-title"><span>💵</span> Cobrar</div>
+    <p class="helper">Lo que te debe cada uno. Tocá “Cobrar” cuando te paguen. Editá nombres o gastos en sus pestañas.</p>
+
+    <!-- Mobile -->
+    <div class="cards" id="cobrar-cards"></div>
+
+    <!-- Desktop -->
+    <div class="only-desktop">
+      <table id="cobrar-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th style="text-align:right">A Pagar</th>
+            <th class="col-pay" title="¿Pagó?">✓ Pagó</th>
+          </tr>
+        </thead>
+        <tbody id="cobrar-body"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -693,6 +759,33 @@
     </div>
     <div class="test-result" id="cfg-test"></div>
 
+    <div class="modal-section">
+      <h3>🥩 Carne por persona</h3>
+      <p class="modal-note">Cuántos gramos comprar por cada persona que come carne. Se usa para el “Comprar X kg” del resumen.</p>
+      <div class="field">
+        <label for="kg-input">Gramos por persona</label>
+        <input type="number" id="kg-input" min="0" step="50" value="400" aria-label="Gramos de carne por persona"
+          onchange="onKgChange(this.value)">
+      </div>
+    </div>
+
+    <div class="modal-section" id="roster-section" style="display:none;">
+      <h3>📒 Roster de personas</h3>
+      <p class="modal-note">Personas guardadas para reusar entre asados. Se editan acá; al agregar gente las elegís de esta lista.</p>
+      <button class="add-btn add-btn-top" onclick="addRosterPerson()">+ Agregar al roster</button>
+      <table id="roster-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th class="gente-carne" title="¿Come carne?">🥩 Carne</th>
+            <th class="col-del"></th>
+          </tr>
+        </thead>
+        <tbody id="roster-body"></tbody>
+      </table>
+    </div>
+
     <div class="modal-section" id="migrate-section" style="display:none;">
       <h3>📥 Importar datos locales</h3>
       <p class="modal-note" id="migrate-note">Hay datos guardados en este navegador (modo offline). Importalos a un asado nuevo en el servidor.</p>
@@ -706,12 +799,12 @@
   </div>
 </div>
 
-<!-- ADD-FROM-ROSTER PICKER MODAL -->
+<!-- ADD PERSON DIALOG (roster auto-loaded; type a new name to create one) -->
 <div class="overlay" id="roster-picker-overlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rp-title">
-    <h2 id="rp-title">📒 Agregar del roster</h2>
-    <p class="modal-note">Buscá y tocá una persona guardada para agregarla a este asado.</p>
-    <input type="text" id="rp-search" class="picker-search" placeholder="Buscar persona…" autocomplete="off"
+    <h2 id="rp-title">👥 Agregar persona</h2>
+    <p class="modal-note">Tocá una persona guardada para sumarla, o escribí un nombre nuevo y tocá “Crear”.</p>
+    <input type="text" id="rp-search" class="picker-search" placeholder="Buscar o nombre nuevo…" autocomplete="off"
       oninput="renderRosterPicker(this.value)" onkeydown="onRosterPickerKey(event)">
     <div id="roster-picker-list" class="picker-list"></div>
     <div class="modal-actions" style="margin-top:18px;">
@@ -720,8 +813,9 @@
   </div>
 </div>
 
-<!-- GENERIC SEARCHABLE PICKER (e.g. "Pagado por") -->
-<div class="overlay" id="picker-overlay">
+<!-- GENERIC SEARCHABLE PICKER (e.g. "Pagado por"). z-index above other modals
+     so it can open on top of the Gasto edit modal. -->
+<div class="overlay" id="picker-overlay" style="z-index:60">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="picker-title">
     <h2 id="picker-title">Elegir</h2>
     <input type="text" id="picker-search" class="picker-search" placeholder="Buscar…" autocomplete="off"
@@ -750,6 +844,57 @@
       <button class="btn btn-primary btn-row" id="asado-save-btn" onclick="submitAsadoModal()">Guardar</button>
     </div>
     <div class="test-result" id="asado-modal-result"></div>
+  </div>
+</div>
+
+<!-- GASTO edit modal (mobile cards edit here, so a scroll can't change a value) -->
+<div class="overlay" id="gasto-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gasto-modal-title">
+    <h2 id="gasto-modal-title">Editar gasto</h2>
+    <div class="field">
+      <label for="gm-desc">Descripción</label>
+      <input type="text" id="gm-desc" placeholder="Carbón, carne, hielo…" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="gm-price">Precio ($)</label>
+      <input type="number" id="gm-price" placeholder="0" min="0" step="0.01">
+    </div>
+    <div class="field">
+      <button type="button" class="pill" id="gm-carne" aria-pressed="false" onclick="gmToggleCarne()">🥩 Gasto de carne</button>
+    </div>
+    <div class="field">
+      <label>Pagado por</label>
+      <button type="button" class="paid-by-btn" onclick="gmPickPayer()">
+        <span class="pb-label" id="gm-payer-label">— Vos / todos</span><span class="pb-caret">▾</span>
+      </button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="gmDelete()">🗑 Borrar</button>
+      <button class="btn btn-ghost" onclick="closeGastoModal()">Cancelar</button>
+      <button class="btn btn-primary btn-row" onclick="gmSave()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PERSONA edit modal (Gente tab, mobile) -->
+<div class="overlay" id="persona-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="persona-modal-title">
+    <h2 id="persona-modal-title">Editar persona</h2>
+    <div class="field">
+      <label for="pm-name">Nombre</label>
+      <input type="text" id="pm-name" placeholder="Nombre" autocomplete="off">
+    </div>
+    <div class="field">
+      <button type="button" class="pill" id="pm-carne" aria-pressed="true" onclick="pmToggleCarne()">🥩 Come carne</button>
+    </div>
+    <div class="field" id="pm-roster-field" style="display:none;">
+      <button type="button" class="btn" id="pm-roster-btn" onclick="pmSaveToRoster()">📒 Guardar en el roster</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="pmDelete()">🗑 Borrar</button>
+      <button class="btn btn-ghost" onclick="closePersonaModal()">Cancelar</button>
+      <button class="btn btn-primary btn-row" onclick="pmSave()">Guardar</button>
+    </div>
   </div>
 </div>
 
@@ -945,6 +1090,13 @@
     recalc();
   }
 
+  // Inline (desktop) deletes confirm first — the ✕ sits near other controls.
+  function askDelGasto(id) {
+    const g = state.gastos.find(x => x.id === id);
+    const label = g && g.nombre ? `"${g.nombre}"` : 'este gasto';
+    if (confirm('¿Borrar ' + label + '?')) delGasto(id);
+  }
+
   function onGastoChange(id, field, value) {
     const g = state.gastos.find(g => g.id === id);
     if (!g) return;
@@ -955,10 +1107,13 @@
 
   function renderGastos() {
     const tbody = document.getElementById('gastos-body');
+    const cards = document.getElementById('gastos-cards');
     if (state.gastos.length === 0) {
       tbody.innerHTML = '<tr><td colspan="5" class="empty">No hay gastos cargados</td></tr>';
+      cards.innerHTML = '<p class="empty">No hay gastos cargados</p>';
       return;
     }
+    // Desktop: inline-editable table
     tbody.innerHTML = state.gastos.map(g => `
       <tr>
         <td><input type="text" id="gasto-name-${g.id}" value="${esc(g.nombre)}" placeholder="Descripción"
@@ -972,19 +1127,37 @@
         <td><button class="paid-by-btn" aria-label="Pagado por" onclick="openPayerPicker('${g.id}')">
           <span class="pb-label">${payerLabelText(g)}</span><span class="pb-caret">▾</span>
         </button></td>
-        <td class="col-del"><button class="del-btn" aria-label="Borrar gasto" onclick="delGasto('${g.id}')">✕</button></td>
+        <td class="col-del"><button class="del-btn" aria-label="Borrar gasto" onclick="askDelGasto('${g.id}')">✕</button></td>
       </tr>
+    `).join('');
+    // Mobile: compact read-only cards (edit via the ✎ modal)
+    cards.innerHTML = state.gastos.map(g => `
+      <div class="mcard">
+        <div class="mcard-main">
+          <div class="mcard-title">${esc(g.nombre) || '<span style="color:var(--text-muted)">Sin descripción</span>'}</div>
+          ${g.paidBy ? `<div class="mcard-sub">Pagó ${payerLabelText(g)}</div>` : ''}
+        </div>
+        ${g.esCarne ? '<span class="mcard-meat" title="Gasto de carne">🥩</span>' : ''}
+        <div class="mcard-amt">${fmt(parseFloat(g.precio) || 0)}</div>
+        <button class="mcard-edit" aria-label="Editar gasto" onclick="openGastoModal('${g.id}')">✎</button>
+      </div>
     `).join('');
   }
 
   // ---------------------------------------------------------------------------
   // Personas (participants)
   // ---------------------------------------------------------------------------
+  // Re-render both participant views (Gente = setup, Cobrar = settlement).
+  function renderParticipants() {
+    renderGente();
+    renderCobrar();
+  }
+
   function addPersona(nombre = '', comeCarne = true, pagado = false) {
     const id = uid();
     state.personas.unshift({ id, personId: null, nombre, comeCarne, pagado });
     save();
-    renderPersonas();
+    renderParticipants();
     renderGastos();   // refresh "Pagado por" options
     recalc();
     return id;
@@ -1004,7 +1177,7 @@
     // Drop any expense assignment that pointed at the removed participant.
     state.gastos.forEach(g => { if (g.paidBy === id) g.paidBy = ''; });
     save();
-    renderPersonas();
+    renderParticipants();
     renderGastos();
     recalc();
   }
@@ -1017,6 +1190,26 @@
     if (field === 'nombre') p.personId = null;
     save();
     recalc();
+    renderGastos();   // payer labels / meta may have changed
+    renderCobrar();   // names / shares shown here depend on this
+  }
+
+  // Desktop Gente come-carne pill toggle (re-render to flip the pill state).
+  function togglePersonaCarne(id) {
+    const p = state.personas.find(x => x.id === id);
+    if (!p) return;
+    p.comeCarne = !p.comeCarne;
+    save();
+    renderGente();
+    renderCobrar();
+    recalc();
+  }
+
+  // Inline (desktop) delete confirms first — the ✕ sits near other controls.
+  function askDelPersona(id) {
+    const p = state.personas.find(x => x.id === id);
+    const label = p && p.nombre ? `"${p.nombre}"` : 'esta persona';
+    if (confirm('¿Borrar ' + label + '?')) delPersona(id);
   }
 
   // On blur/change of the name: try to link to a roster person by exact name.
@@ -1032,11 +1225,12 @@
       p.nombre = rosterFullName(match);
       p.comeCarne = !!match.come_carne;
       save();
-      renderPersonas();
+      renderParticipants();
       renderGastos();   // names changed → refresh "Pagado por" labels
       recalc();
     } else {
       renderGastos();   // typed-in name changed → refresh "Pagado por" labels
+      renderCobrar();
     }
   }
 
@@ -1057,48 +1251,61 @@
       p.personId = await createRosterPerson({ name, last_name, come_carne: !!p.comeCarne });
     }
     save();
-    renderPersonas();
+    renderParticipants();
     recalc();
   }
 
-  // Add-from-roster picker: pick saved people to add to the current asado.
-  function updateAddFromRosterBtn() {
-    const btn = document.getElementById('btn-add-from-roster');
-    if (btn) btn.style.display = (apiEnabled() && roster.length) ? 'block' : 'none';
-  }
-
-  // Roster people not already in this asado (by link).
-  function rosterAvailable() {
-    const used = new Set(state.personas.map(p => p.personId).filter(Boolean));
-    return roster.filter(r => !used.has(r.id));
+  // Opening "Agregar persona" always pops up a dialog (same on desktop + mobile):
+  //  - online → the roster picker: the full list of saved people to click, plus
+  //    a "Crear «name»" row to add someone new;
+  //  - offline → the simple new-person modal (no database to list when offline).
+  function onAddPersona() {
+    if (apiEnabled()) openRosterPicker();
+    else openPersonaModal('new');
   }
 
   let rpFiltered = [];
   function rpQuery() { const s = document.getElementById('rp-search'); return s ? s.value : ''; }
 
   function renderRosterPicker(q) {
-    const query = (q || '').trim().toLowerCase();
+    const raw = (q || '').trim();
+    const query = raw.toLowerCase();
     const list = document.getElementById('roster-picker-list');
-    const avail = rosterAvailable();
-    rpFiltered = avail.filter(r => !query || rosterFullName(r).toLowerCase().includes(query));
-    if (!avail.length) {
-      list.innerHTML = '<p class="empty">No quedan personas del roster para agregar.</p>';
-      return;
-    }
-    if (!rpFiltered.length) {
-      list.innerHTML = '<p class="empty">Sin resultados.</p>';
-      return;
-    }
-    list.innerHTML = rpFiltered.map(r => `
-      <button class="rp-item" onclick="addParticipantFromRoster('${r.id}')">
+    const used = new Set(state.personas.map(p => p.personId).filter(Boolean));
+    // Show ALL saved people; mark the ones already in this asado.
+    const shown = roster.filter(r => !query || rosterFullName(r).toLowerCase().includes(query));
+    rpFiltered = shown.filter(r => !used.has(r.id));  // Enter adds the first available
+    // Offer to create a brand-new person when the typed name isn't an exact roster match.
+    const exact = roster.some(r => rosterFullName(r).toLowerCase() === query);
+    const createRow = (raw && !exact)
+      ? `<button class="rp-item" onclick="createPersonFromPicker()">
+           <span>➕ Crear “${esc(raw)}”</span><span class="rp-meat">persona nueva</span>
+         </button>`
+      : '';
+    const rows = shown.map(r => {
+      const added = used.has(r.id);
+      const meta = added ? '✓ ya está' : (r.come_carne ? '🥩 come carne' : 'no come carne');
+      return `<button class="rp-item" ${added ? 'disabled style="opacity:.5;cursor:default"' : `onclick="addParticipantFromRoster('${r.id}')"`}>
         <span>${esc(rosterFullName(r)) || '(sin nombre)'}</span>
-        <span class="rp-meat">${r.come_carne ? '🥩 come carne' : 'no come carne'}</span>
-      </button>
-    `).join('');
+        <span class="rp-meat">${meta}</span>
+      </button>`;
+    }).join('');
+    if (!createRow && !shown.length) {
+      list.innerHTML = roster.length
+        ? '<p class="empty">Sin resultados.</p>'
+        : '<p class="empty">El roster está vacío. Escribí un nombre para crear una persona.</p>';
+      return;
+    }
+    list.innerHTML = createRow + rows;
   }
 
   function onRosterPickerKey(e) {
-    if (e.key === 'Enter' && rpFiltered.length) { e.preventDefault(); addParticipantFromRoster(rpFiltered[0].id); }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const raw = rpQuery().trim();
+    const exact = roster.some(r => rosterFullName(r).toLowerCase() === raw.toLowerCase());
+    if (raw && !exact) { createPersonFromPicker(); return; }
+    if (rpFiltered.length) addParticipantFromRoster(rpFiltered[0].id);
   }
 
   function openRosterPicker() {
@@ -1114,10 +1321,22 @@
     if (!r) return;
     state.personas.unshift({ id: uid(), personId: r.id, nombre: rosterFullName(r), comeCarne: !!r.come_carne, pagado: false });
     save();
-    renderPersonas();
+    renderParticipants();
     renderGastos();                 // refresh "Pagado por" options
     recalc();
     renderRosterPicker(rpQuery());  // drop the just-added person, keep the search
+  }
+
+  // Create a brand-new ad-hoc participant from the typed name, then close.
+  function createPersonFromPicker() {
+    const name = rpQuery().trim();
+    if (!name) return;
+    state.personas.unshift({ id: uid(), personId: null, nombre: name, comeCarne: true, pagado: false });
+    save();
+    renderParticipants();
+    renderGastos();
+    recalc();
+    closeRosterPicker();
   }
 
   // ---------------------------------------------------------------------------
@@ -1163,34 +1382,81 @@
   }
   function closeSearchPicker() { document.getElementById('picker-overlay').classList.remove('open'); }
 
-  function renderPersonas() {
-    const tbody = document.getElementById('personas-body');
-    document.getElementById('personas-helper').style.display = apiEnabled() ? 'block' : 'none';
-    updateAddFromRosterBtn();
+  // GENTE tab — who's coming + come-carne (drives meat). Setup only, no money.
+  function renderGente() {
+    const tbody = document.getElementById('gente-body');
+    const cards = document.getElementById('gente-cards');
     if (state.personas.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty">No hay personas cargadas</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="empty">No hay personas cargadas</td></tr>';
+      cards.innerHTML = '<p class="empty">No hay personas cargadas</p>';
       return;
     }
     const listAttr = apiEnabled() ? 'list="roster-datalist"' : '';
+    // Desktop: inline-editable table (name input + come-carne pill button)
     tbody.innerHTML = state.personas.map(p => `
-      <tr class="${p.pagado ? 'row-paid' : ''}">
+      <tr>
         <td class="col-link">${
           p.personId
             ? '<span class="link-dot" title="Guardada en el roster">●</span>'
             : (apiEnabled() ? `<button class="roster-add-btn" title="Guardar en el roster" aria-label="Guardar en el roster" onclick="savePersonaToRoster('${p.id}')">📒+</button>` : '')
         }</td>
-        <td><input type="text" id="persona-name-${p.id}" value="${esc(p.nombre)}" placeholder="Nombre" ${listAttr}
+        <td><input type="text" class="gente-name" id="persona-name-${p.id}" value="${esc(p.nombre)}" placeholder="Nombre" ${listAttr}
           oninput="onPersonaChange('${p.id}','nombre',this.value)"
           onchange="onPersonaNameCommit('${p.id}',this.value)"
           onkeydown="onPersonaKey(event,'${p.id}')"></td>
-        <td class="col-chk" title="¿Come carne?"><label class="chk"><input type="checkbox" aria-label="Come carne" ${p.comeCarne ? 'checked' : ''}
-          onchange="onPersonaChange('${p.id}','comeCarne',this.checked)"></label></td>
-        <td style="text-align:right"><span id="pago-${p.id}"></span></td>
-        <td class="col-pay"><button class="pay-btn ${p.pagado ? 'paid' : ''}" aria-pressed="${p.pagado}"
-          aria-label="${p.pagado ? 'Pagó (tocá para desmarcar)' : 'Marcar como pagado'}"
-          onclick="setPagado('${p.id}', ${!p.pagado})">${p.pagado ? '✓ Pagó' : 'Cobrar'}</button></td>
-        <td class="col-del"><button class="del-btn" aria-label="Borrar persona" onclick="delPersona('${p.id}')">✕</button></td>
+        <td class="gente-carne"><button type="button" class="pill pill-sm ${p.comeCarne ? 'on' : ''}" aria-pressed="${p.comeCarne}"
+          onclick="togglePersonaCarne('${p.id}')">${p.comeCarne ? '🥩 Come carne' : 'No come carne'}</button></td>
+        <td class="col-del"><button class="del-btn" aria-label="Borrar persona" onclick="askDelPersona('${p.id}')">✕</button></td>
       </tr>
+    `).join('');
+    // Mobile: compact card with a DIRECT come-carne toggle (big, no modal
+    // needed for the common quick change); name edits via the ✎ modal.
+    cards.innerHTML = state.personas.map(p => `
+      <div class="mcard">
+        <div class="mcard-main">
+          <div class="mcard-title">${esc(p.nombre) || '<span style="color:var(--text-muted)">Sin nombre</span>'}${p.personId ? ' <span class="mcard-link" title="En el roster">●</span>' : ''}</div>
+        </div>
+        <button type="button" class="pill pill-sm carne-toggle ${p.comeCarne ? 'on' : ''}" aria-pressed="${p.comeCarne}"
+          aria-label="${p.comeCarne ? 'Come carne (tocá para cambiar)' : 'No come carne (tocá para cambiar)'}"
+          onclick="togglePersonaCarne('${p.id}')">${p.comeCarne ? '🥩 Carne' : 'Sin carne'}</button>
+        <button class="mcard-edit" aria-label="Editar nombre" onclick="openPersonaModal('${p.id}')">✎</button>
+      </div>
+    `).join('');
+  }
+
+  // COBRAR tab — read-only amounts + a pay toggle. Amounts are filled by recalc().
+  function renderCobrar() {
+    const tbody = document.getElementById('cobrar-body');
+    const cards = document.getElementById('cobrar-cards');
+    if (state.personas.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty">Agregá gente para calcular cuánto paga cada uno</td></tr>';
+      cards.innerHTML = '<p class="empty">Agregá gente para calcular cuánto paga cada uno</p>';
+      return;
+    }
+    const payBtn = (p) => `<button class="pay-btn ${p.pagado ? 'paid' : ''}" aria-pressed="${p.pagado}"
+      aria-label="${p.pagado ? 'Pagó (tocá para desmarcar)' : 'Marcar como pagado'}"
+      onclick="setPagado('${p.id}', ${!p.pagado})">${p.pagado ? '✓ Pagó' : 'Cobrar'}</button>`;
+    // Desktop table
+    tbody.innerHTML = state.personas.map(p => `
+      <tr class="${p.pagado ? 'row-paid' : ''}">
+        <td>${esc(p.nombre) || '(sin nombre)'}</td>
+        <td style="text-align:right">
+          <span class="amount cobrar-amount" data-pid="${p.id}"></span>
+          <span class="amount-muted cobrar-note" data-pid="${p.id}" style="display:block"></span>
+        </td>
+        <td class="col-pay">${payBtn(p)}</td>
+      </tr>
+    `).join('');
+    // Mobile cards
+    cards.innerHTML = state.personas.map(p => `
+      <div class="mcard ${p.pagado ? 'row-paid' : ''}">
+        <div class="mcard-main">
+          <div class="mcard-title">${esc(p.nombre) || '(sin nombre)'}</div>
+          <div class="mcard-sub cobrar-note" data-pid="${p.id}"></div>
+        </div>
+        <div class="mcard-amt cobrar-amount" data-pid="${p.id}"></div>
+        ${payBtn(p)}
+      </div>
     `).join('');
   }
 
@@ -1199,7 +1465,7 @@
     if (!p) return;
     p.pagado = val;
     save();
-    renderPersonas(); // re-render to apply paid-row styling
+    renderCobrar(); // re-render to apply paid-row styling
     recalc();
   }
 
@@ -1219,9 +1485,10 @@
     document.getElementById('stat-personas').textContent = nTotal;
     document.getElementById('stat-comen-carne').textContent = nCarne;
 
-    // Meat to buy: grams/person (configurable) × people who eat meat.
+    // Meat to buy: grams/person (configurable in Settings) × people who eat meat.
     const kilos = nCarne * (kgPorPersona || 0) / 1000;
     document.getElementById('stat-kg').textContent = fmtKg(kilos);
+    document.getElementById('stat-kg-sub').textContent = kgPorPersona ? `(${kgPorPersona} g c/u)` : '';
 
     // Round each component UP to whole pesos so people pay round numbers
     // and the breakdown (base + carne) always adds up to the shown total.
@@ -1249,16 +1516,19 @@
       if (p.pagado) cobrado += neto;
       else pendiente += neto;
 
-      const cell = document.getElementById('pago-' + p.id);
-      if (cell) {
-        const amountHtml = neto >= 0
-          ? `<span class="amount">${fmt(neto)}</span>`
-          : `<span class="amount neg">-${fmt(-neto)}</span>`;
-        let note = '';
-        if (paid > 0) note = `consumo ${fmt(share)} − pagó ${fmt(paid)}` + (neto < 0 ? ' · a favor' : '');
-        else if (p.comeCarne && nCarne > 0) note = `base ${fmt(basePorPersona)} + carne ${fmt(extraCarne)}`;
-        cell.innerHTML = amountHtml + (note ? `<br><span class="amount-muted">${note}</span>` : '');
-      }
+      // Fill the Cobrar views (desktop span + mobile card share the data-pid).
+      const amountText = neto >= 0 ? fmt(neto) : '-' + fmt(-neto);
+      let note = '';
+      if (paid > 0) note = `consumo ${fmt(share)} − pagó ${fmt(paid)}` + (neto < 0 ? ' · a favor' : '');
+      else if (p.comeCarne && nCarne > 0) note = `base ${fmt(basePorPersona)} + carne ${fmt(extraCarne)}`;
+      document.querySelectorAll('.cobrar-amount[data-pid="' + p.id + '"]').forEach(el => {
+        el.textContent = amountText;
+        el.classList.toggle('neg', neto < 0);
+      });
+      document.querySelectorAll('.cobrar-note[data-pid="' + p.id + '"]').forEach(el => {
+        el.textContent = note;
+        el.style.display = note ? '' : 'none';
+      });
     });
 
     document.getElementById('stat-acobrar').textContent = fmt(aCobrar);
@@ -1305,13 +1575,13 @@
     state = { gastos: [], personas: [] };
     save();
     renderGastos();
-    renderPersonas();
+    renderParticipants();
     recalc();
   }
 
   function renderAll() {
     renderGastos();
-    renderPersonas();
+    renderParticipants();
     recalc();
   }
 
@@ -1341,8 +1611,6 @@
     const online = apiEnabled();
     document.getElementById('tb-online').style.display = online ? 'inline-flex' : 'none';
     document.getElementById('tb-offline').style.display = online ? 'none' : 'inline-flex';
-    document.getElementById('tab-roster-btn').hidden = !online;
-    if (!online && document.querySelector('.tab-btn.active')?.dataset.tab === 'roster') showTab('gastos');
     setSaveStatus('saved', 'Conectado');
     if (!online) document.getElementById('save-status').style.display = 'none';
   }
@@ -1415,7 +1683,6 @@
     } catch (e) { roster = []; }
     renderRoster();
     updateDatalist();
-    updateAddFromRosterBtn();
   }
 
   // Full display name for a roster person: "Nombre Apellido" (trimmed).
@@ -1474,6 +1741,9 @@
   }
 
   async function deleteRosterPerson(id) {
+    const r = roster.find(x => x.id === id);
+    const label = r && rosterFullName(r) ? `"${rosterFullName(r)}"` : 'esta persona';
+    if (!confirm('¿Quitar ' + label + ' del roster guardado?')) return;
     roster = roster.filter(r => r.id !== id);
     renderRoster();
     updateDatalist();
@@ -1488,6 +1758,11 @@
     document.getElementById('cfg-token').value = cfg.token || '';
     document.getElementById('cfg-test').textContent = '';
     document.getElementById('cfg-test').className = 'test-result';
+    // Meat-per-person preference reflects the current value.
+    document.getElementById('kg-input').value = kgPorPersona;
+    // Roster management lives here (online only).
+    document.getElementById('roster-section').style.display = apiEnabled() ? 'block' : 'none';
+    if (apiEnabled()) renderRoster();
     // Migration section: offer when there is offline data to import.
     let hasOffline = false;
     try {
@@ -1609,6 +1884,173 @@
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Gasto edit modal (mobile cards edit here, so scrolling can't change a value)
+  // ---------------------------------------------------------------------------
+  let editingGastoId = null;
+  let gmCarne = false;
+  let gmPayer = '';
+
+  function openGastoModal(id) {
+    if (id === 'new') {
+      editingGastoId = null;
+      gmCarne = false; gmPayer = '';
+      document.getElementById('gasto-modal-title').textContent = 'Nuevo gasto';
+      document.getElementById('gm-desc').value = '';
+      document.getElementById('gm-price').value = '';
+    } else {
+      const g = state.gastos.find(x => x.id === id);
+      if (!g) return;
+      editingGastoId = id;
+      gmCarne = !!g.esCarne; gmPayer = g.paidBy || '';
+      document.getElementById('gasto-modal-title').textContent = 'Editar gasto';
+      document.getElementById('gm-desc').value = g.nombre || '';
+      document.getElementById('gm-price').value = (g.precio === '' || g.precio == null) ? '' : g.precio;
+    }
+    gmReflect();
+    document.getElementById('gasto-overlay').classList.add('open');
+    setTimeout(() => document.getElementById('gm-desc').focus(), 30);
+  }
+
+  function gmPayerLabel() {
+    if (gmPayer) {
+      const p = state.personas.find(x => x.id === gmPayer);
+      if (p) return p.nombre || '(sin nombre)';
+    }
+    return '— Vos / todos';
+  }
+  function gmReflect() {
+    const b = document.getElementById('gm-carne');
+    b.classList.toggle('on', gmCarne);
+    b.setAttribute('aria-pressed', gmCarne);
+    document.getElementById('gm-payer-label').textContent = gmPayerLabel();
+  }
+  function gmToggleCarne() { gmCarne = !gmCarne; gmReflect(); }
+
+  function gmPickPayer() {
+    const items = [{ value: '', label: '— Vos / todos', meta: '' }].concat(
+      state.personas.map(p => ({ value: p.id, label: p.nombre || '(sin nombre)', meta: p.comeCarne ? '🥩' : '' }))
+    );
+    openSearchPicker({
+      title: 'Pagado por', placeholder: 'Buscar persona…', items,
+      onPick: (value) => { gmPayer = value; gmReflect(); }
+    });
+  }
+
+  function closeGastoModal() { document.getElementById('gasto-overlay').classList.remove('open'); }
+
+  function gmSave() {
+    const nombre = document.getElementById('gm-desc').value;
+    const raw = document.getElementById('gm-price').value;
+    const precio = raw === '' ? '' : (parseFloat(raw) || 0);
+    if (editingGastoId) {
+      const g = state.gastos.find(x => x.id === editingGastoId);
+      if (g) { g.nombre = nombre; g.precio = precio; g.esCarne = gmCarne; g.paidBy = gmPayer; }
+    } else {
+      state.gastos.unshift({ id: uid(), nombre, precio, esCarne: gmCarne, paidBy: gmPayer });
+    }
+    save();
+    renderGastos();
+    recalc();
+    closeGastoModal();
+  }
+
+  function gmDelete() {
+    if (editingGastoId) {
+      if (!confirm('¿Borrar este gasto?')) return;
+      delGasto(editingGastoId);
+    }
+    closeGastoModal();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Persona edit modal (Gente tab, mobile)
+  // ---------------------------------------------------------------------------
+  let editingPersonaId = null;
+  let pmCarne = true;
+
+  function openPersonaModal(id) {
+    let p = null;
+    if (id === 'new') {
+      editingPersonaId = null;
+      pmCarne = true;
+      document.getElementById('persona-modal-title').textContent = 'Nueva persona';
+      document.getElementById('pm-name').value = '';
+    } else {
+      p = state.personas.find(x => x.id === id);
+      if (!p) return;
+      editingPersonaId = id;
+      pmCarne = !!p.comeCarne;
+      document.getElementById('persona-modal-title').textContent = 'Editar persona';
+      document.getElementById('pm-name').value = p.nombre || '';
+    }
+    // Offer "save to roster" only online and when not already linked.
+    const showRoster = apiEnabled() && (!p || !p.personId);
+    document.getElementById('pm-roster-field').style.display = showRoster ? 'block' : 'none';
+    const nameInput = document.getElementById('pm-name');
+    if (apiEnabled()) nameInput.setAttribute('list', 'roster-datalist'); else nameInput.removeAttribute('list');
+    pmReflect();
+    document.getElementById('persona-overlay').classList.add('open');
+    setTimeout(() => nameInput.focus(), 30);
+  }
+
+  function pmReflect() {
+    const b = document.getElementById('pm-carne');
+    b.classList.toggle('on', pmCarne);
+    b.setAttribute('aria-pressed', pmCarne);
+  }
+  function pmToggleCarne() { pmCarne = !pmCarne; pmReflect(); }
+  function closePersonaModal() { document.getElementById('persona-overlay').classList.remove('open'); }
+
+  // Ensure there's a participant to edit (create on first save of a new one).
+  function pmEnsurePersona() {
+    if (editingPersonaId) return state.personas.find(x => x.id === editingPersonaId);
+    const p = { id: uid(), personId: null, nombre: '', comeCarne: true, pagado: false };
+    state.personas.unshift(p);
+    editingPersonaId = p.id;
+    return p;
+  }
+
+  function pmSave() {
+    const nombre = document.getElementById('pm-name').value;
+    const p = pmEnsurePersona();
+    if (!p) { closePersonaModal(); return; }
+    p.nombre = nombre;
+    p.comeCarne = pmCarne;
+    p.personId = null;
+    // Relink to a roster person by exact name (full name, then first name).
+    const v = nombre.trim().toLowerCase();
+    if (v) {
+      const match = roster.find(r => rosterFullName(r).toLowerCase() === v)
+                 || roster.find(r => (r.name || '').trim().toLowerCase() === v);
+      if (match) { p.personId = match.id; p.nombre = rosterFullName(match); p.comeCarne = !!match.come_carne; }
+    }
+    save();
+    renderParticipants();
+    renderGastos();   // payer labels may reference this name
+    recalc();
+    closePersonaModal();
+  }
+
+  function pmDelete() {
+    if (editingPersonaId) {
+      if (!confirm('¿Borrar esta persona?')) return;
+      delPersona(editingPersonaId);
+    }
+    closePersonaModal();
+  }
+
+  async function pmSaveToRoster() {
+    const nombre = document.getElementById('pm-name').value.trim();
+    if (!nombre) { alert('Poné un nombre antes de guardarlo en el roster.'); return; }
+    const p = pmEnsurePersona();
+    if (!p) return;
+    p.nombre = nombre;
+    p.comeCarne = pmCarne;
+    await savePersonaToRoster(p.id);   // creates/links the roster person + re-renders
+    document.getElementById('pm-roster-field').style.display = 'none';
+  }
+
   // Close modals on overlay backdrop click
   document.querySelectorAll('.overlay').forEach(ov => {
     ov.addEventListener('click', (e) => { if (e.target === ov) ov.classList.remove('open'); });
@@ -1682,7 +2124,8 @@
 
   let savedTab = 'gastos';
   try { savedTab = localStorage.getItem('asado-tab') || 'gastos'; } catch (e) {}
-  if (savedTab === 'roster' && !apiEnabled()) savedTab = 'gastos';
+  if (savedTab === 'personas') savedTab = 'gente';    // legacy tab name
+  if (savedTab === 'roster') savedTab = 'gastos';     // roster moved into Settings
   showTab(savedTab);
 </script>
 </body>
