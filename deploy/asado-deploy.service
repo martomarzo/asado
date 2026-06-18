@@ -1,0 +1,8 @@
+[Unit]
+Description=Auto-deploy asado from GitHub (pull + redeploy what changed)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash /root/containers/asado/deploy.sh
