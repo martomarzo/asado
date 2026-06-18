@@ -91,7 +91,8 @@ Primary keys are **client-supplied text ids** (frontend already generates them),
 - [x] **Deployed the API container on the Docker VM** (`docker`, `containers/asado`).
       Bound to `0.0.0.0:8787`, `restart: unless-stopped`, tables migrated.
 - [x] Confirmed `/api/health` + authed `/api/people` reachable over LAN and Tailscale
-- [ ] (optional) host `web/index.html` somewhere on the LAN
+- [x] **Frontend served by the API itself** (same origin) with auto-injected token,
+      so a shared URL connects with zero setup — see below.
 
 ## Frontend rework — DONE
 
@@ -122,11 +123,20 @@ Enter-to-add, accessibility (aria labels / pressed states).
 | DB / role | `asado` / `asado` (password in the VM's `api/.env`) |
 | Docker VM | `docker` — LAN `192.168.0.105`, tailnet `100.114.36.91` |
 | App dir | `/root/containers/asado` (alongside `karakeep`) |
-| API URL (LAN) | `http://192.168.0.105:8787` |
-| API URL (Tailscale) | `http://100.114.36.91:8787` |
+| **App URL (LAN)** | `http://192.168.0.105:8787/` |
+| **App URL (Tailscale)** | `http://100.114.36.91:8787/` |
 
 `DATABASE_URL` points at the Postgres LAN IP (`192.168.0.98`); the API binds
 `0.0.0.0:8787` so it answers on both LAN and tailnet.
+
+**Shareable, zero-setup app.** The API container also serves `web/index.html`
+(volume-mounted at `/app/web`, read-only) at `/`, and exposes `/config.js` which
+injects `window.ASADO_CONFIG = { token }`. So opening the app URL above
+auto-connects to the server — no gear/token setup. Just send the URL to anyone on
+the LAN/VPN. Trade-off: `/config.js` exposes the shared token to anyone who can
+load the page; acceptable because access is LAN/VPN-only (same trust boundary).
+Editing `web/index.html` + refreshing is enough (no rebuild); a `server.js`
+change needs `docker compose up -d --build`.
 
 **Updating later** (repo is private, VM has no git creds — push code over SSH):
 ```bash
