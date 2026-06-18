@@ -81,7 +81,7 @@ app.get('/api/asados/:id', wrap(async (req, res) => {
   const a = await pool.query('select id, name, event_date from asados where id = $1', [req.params.id]);
   if (!a.rows.length) return res.status(404).json({ error: 'not_found' });
   const expenses = await pool.query(
-    'select id, description, price, es_carne, position from expenses where asado_id = $1 order by position',
+    'select id, description, price, es_carne, paid_by, position from expenses where asado_id = $1 order by position',
     [req.params.id]
   );
   const participants = await pool.query(
@@ -108,8 +108,8 @@ app.put('/api/asados/:id', wrap(async (req, res) => {
     for (let i = 0; i < expenses.length; i++) {
       const e = expenses[i];
       await client.query(
-        'insert into expenses (id, asado_id, description, price, es_carne, position) values ($1, $2, $3, $4, $5, $6)',
-        [e.id, req.params.id, e.description ?? '', e.price ?? 0, !!e.es_carne, i]
+        'insert into expenses (id, asado_id, description, price, es_carne, paid_by, position) values ($1, $2, $3, $4, $5, $6, $7)',
+        [e.id, req.params.id, e.description ?? '', e.price ?? 0, !!e.es_carne, e.paid_by ?? null, i]
       );
     }
 

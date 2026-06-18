@@ -311,7 +311,41 @@
 
   /* Per-person amount */
   .amount { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .amount.neg { color: var(--green); }   /* a favor: they overpaid, we owe them */
   .amount-muted { color: var(--text-muted); font-size: 0.8rem; }
+
+  /* Inline grams/person control in the Resumen */
+  #kg-input {
+    width: 62px;
+    padding: 2px 6px;
+    font-size: 0.82rem;
+    text-align: right;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+  }
+  #kg-input:focus { border-color: var(--accent); outline: none; }
+
+  /* "Pagado por" select in the Gastos table */
+  .paid-by-sel {
+    width: 100%;
+    min-width: 96px;
+    padding: 5px 6px;
+    font-size: 0.85rem;
+  }
+  /* Save-to-roster button in the link column */
+  .roster-add-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.95rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .roster-add-btn:hover { color: var(--accent); background: rgba(232,98,26,0.12); }
 
   /* Pagó toggle button (big tap target) */
   .pay-btn {
@@ -485,6 +519,9 @@
       <span>Carne <b id="stat-carne">$0</b></span>
       <span>Sin carne <b id="stat-sin-carne">$0</b></span>
       <span><b id="stat-personas">0</b> personas · <b id="stat-comen-carne">0</b> comen carne</span>
+      <span>🥩 Comprar <b id="stat-kg">0 kg</b>
+        · <input type="number" id="kg-input" min="0" step="50" value="400" aria-label="Gramos de carne por persona"
+            onchange="onKgChange(this.value)"> g/persona</span>
       <span class="sobra" id="stat-sobra"></span>
     </div>
   </div>
@@ -500,7 +537,8 @@
 <div class="panel active" data-tab="gastos">
   <div class="card">
     <div class="card-title"><span>💸</span> Gastos</div>
-    <p class="helper">Marcá 🥩 en los gastos de carne: se reparten solo entre los que comen carne. El resto se divide entre todos.</p>
+    <p class="helper">Marcá 🥩 en los gastos de carne: se reparten solo entre los que comen carne. El resto se divide entre todos.
+      Asigná un gasto a quien lo pagó para descontárselo de lo que te debe.</p>
     <button class="add-btn add-btn-top" onclick="addGasto()">+ Agregar gasto</button>
     <table id="gastos-table">
       <thead>
@@ -508,6 +546,7 @@
           <th>Descripción</th>
           <th style="text-align:right">Precio ($)</th>
           <th class="col-chk" title="¿Es un gasto de carne?">🥩 Carne</th>
+          <th title="¿Quién lo pagó? Se le descuenta de lo que debe">Pagado por</th>
           <th class="col-del"></th>
         </tr>
       </thead>
@@ -626,11 +665,13 @@
   const OFFLINE_KEY = 'asado-v1';        // offline single-state (also migration source)
   const CFG_KEY = 'asado-api-config';    // { baseUrl, token }
   const CURRENT_KEY = 'asado-current';   // last selected asado id (online)
+  const KG_KEY = 'asado-kg-por-persona'; // grams of meat per meat-eater (global pref)
   const cachePrefix = (id) => 'asado-cache-' + id;
 
   // ---- App state ----
   let state = { gastos: [], personas: [] };
   let cfg = { baseUrl: '', token: '' };
+  let kgPorPersona = 400;                 // grams/person; loaded from localStorage at boot
 
   // Online-only state
   let asados = [];                        // [{id,name,event_date}]
@@ -680,7 +721,7 @@
       gastos: (a.expenses || []).map(e => ({
         id: e.id, nombre: e.description || '',
         precio: e.price == null || e.price === '' ? '' : Number(e.price),
-        esCarne: !!e.es_carne
+        esCarne: !!e.es_carne, paidBy: e.paid_by || ''
       })),
       personas: (a.participants || []).map(p => ({
         id: p.id, personId: p.person_id || null, nombre: p.name || '',
@@ -695,7 +736,8 @@
       name: currentMeta.name || 'Asado',
       event_date: currentMeta.event_date || null,
       expenses: state.gastos.map(g => ({
-        id: g.id, description: g.nombre || '', price: parseFloat(g.precio) || 0, es_carne: !!g.esCarne
+        id: g.id, description: g.nombre || '', price: parseFloat(g.precio) || 0,
+        es_carne: !!g.esCarne, paid_by: g.paidBy || null
       })),
       participants: state.personas.map(p => ({
         id: p.id, person_id: p.personId || null, name: p.nombre || '',
@@ -763,11 +805,18 @@
   // ---------------------------------------------------------------------------
   function addGasto(nombre = '', precio = '', esCarne = false) {
     const id = uid();
-    state.gastos.unshift({ id, nombre, precio, esCarne });
+    state.gastos.unshift({ id, nombre, precio, esCarne, paidBy: '' });
     save();
     renderGastos();
     recalc();
     return id;
+  }
+
+  // <option> list of current participants for the "Pagado por" select.
+  function participantOptions(selectedId) {
+    return state.personas.map(p =>
+      `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${esc(p.nombre || '(sin nombre)')}</option>`
+    ).join('');
   }
 
   function onGastoKey(e, id) {
@@ -797,7 +846,7 @@
   function renderGastos() {
     const tbody = document.getElementById('gastos-body');
     if (state.gastos.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty">No hay gastos cargados</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">No hay gastos cargados</td></tr>';
       return;
     }
     tbody.innerHTML = state.gastos.map(g => `
@@ -810,6 +859,10 @@
           onkeydown="onGastoKey(event,'${g.id}')"></td>
         <td class="col-chk"><label class="chk"><input type="checkbox" aria-label="Es gasto de carne" ${g.esCarne ? 'checked' : ''}
           onchange="onGastoChange('${g.id}','esCarne',this.checked)"></label></td>
+        <td><select class="paid-by-sel" aria-label="Pagado por" onchange="onGastoChange('${g.id}','paidBy',this.value)">
+          <option value="">— Vos / todos</option>
+          ${participantOptions(g.paidBy)}
+        </select></td>
         <td class="col-del"><button class="del-btn" aria-label="Borrar gasto" onclick="delGasto('${g.id}')">✕</button></td>
       </tr>
     `).join('');
@@ -823,6 +876,7 @@
     state.personas.unshift({ id, personId: null, nombre, comeCarne, pagado });
     save();
     renderPersonas();
+    renderGastos();   // refresh "Pagado por" options
     recalc();
     return id;
   }
@@ -838,8 +892,11 @@
 
   function delPersona(id) {
     state.personas = state.personas.filter(p => p.id !== id);
+    // Drop any expense assignment that pointed at the removed participant.
+    state.gastos.forEach(g => { if (g.paidBy === id) g.paidBy = ''; });
     save();
     renderPersonas();
+    renderGastos();
     recalc();
   }
 
@@ -867,8 +924,32 @@
       p.comeCarne = !!match.come_carne;
       save();
       renderPersonas();
+      renderGastos();   // names changed → refresh "Pagado por" labels
       recalc();
+    } else {
+      renderGastos();   // typed-in name changed → refresh "Pagado por" labels
     }
+  }
+
+  // Save a participant into the persistent roster (and link them).
+  async function savePersonaToRoster(id) {
+    const p = state.personas.find(x => x.id === id);
+    if (!p) return;
+    const full = (p.nombre || '').trim();
+    if (!full) { alert('Poné un nombre antes de guardarlo en el roster.'); return; }
+    // If the roster already has this full name, link to it instead of duplicating.
+    let match = roster.find(r => rosterFullName(r).toLowerCase() === full.toLowerCase());
+    if (match) {
+      p.personId = match.id;
+    } else {
+      const parts = full.split(/\s+/);
+      const name = parts.shift();
+      const last_name = parts.join(' ');
+      p.personId = await createRosterPerson({ name, last_name, come_carne: !!p.comeCarne });
+    }
+    save();
+    renderPersonas();
+    recalc();
   }
 
   function renderPersonas() {
@@ -881,7 +962,11 @@
     const listAttr = apiEnabled() ? 'list="roster-datalist"' : '';
     tbody.innerHTML = state.personas.map(p => `
       <tr class="${p.pagado ? 'row-paid' : ''}">
-        <td class="col-link">${p.personId ? '<span class="link-dot" title="Vinculada al roster">●</span>' : ''}</td>
+        <td class="col-link">${
+          p.personId
+            ? '<span class="link-dot" title="Guardada en el roster">●</span>'
+            : (apiEnabled() ? `<button class="roster-add-btn" title="Guardar en el roster" aria-label="Guardar en el roster" onclick="savePersonaToRoster('${p.id}')">📒+</button>` : '')
+        }</td>
         <td><input type="text" id="persona-name-${p.id}" value="${esc(p.nombre)}" placeholder="Nombre" ${listAttr}
           oninput="onPersonaChange('${p.id}','nombre',this.value)"
           onchange="onPersonaNameCommit('${p.id}',this.value)"
@@ -922,29 +1007,45 @@
     document.getElementById('stat-personas').textContent = nTotal;
     document.getElementById('stat-comen-carne').textContent = nCarne;
 
+    // Meat to buy: grams/person (configurable) × people who eat meat.
+    const kilos = nCarne * (kgPorPersona || 0) / 1000;
+    document.getElementById('stat-kg').textContent = fmtKg(kilos);
+
     // Round each component UP to whole pesos so people pay round numbers
     // and the breakdown (base + carne) always adds up to the shown total.
     const basePorPersona = roundUp(nTotal > 0 ? totalSinCarne / nTotal : 0);
     const extraCarne = roundUp(nCarne > 0 ? totalCarne / nCarne : 0);
 
+    // How much each participant already fronted (expenses assigned to them).
+    const contrib = {};
+    state.gastos.forEach(g => {
+      if (g.paidBy) contrib[g.paidBy] = (contrib[g.paidBy] || 0) + (parseFloat(g.precio) || 0);
+    });
+
     let aCobrar = 0;
     let cobrado = 0;
     let pendiente = 0;
+    let sumShares = 0;
 
     // Update each person's amount in place (no re-render → keeps input focus)
     state.personas.forEach(p => {
-      const monto = basePorPersona + (p.comeCarne ? extraCarne : 0);
-      aCobrar += monto;
-      if (p.pagado) cobrado += monto;
-      else pendiente += monto;
+      const share = basePorPersona + (p.comeCarne ? extraCarne : 0);
+      const paid = contrib[p.id] || 0;
+      const neto = share - paid;   // owes us (positive) / we owe them (negative)
+      sumShares += share;
+      aCobrar += neto;
+      if (p.pagado) cobrado += neto;
+      else pendiente += neto;
 
       const cell = document.getElementById('pago-' + p.id);
       if (cell) {
-        cell.innerHTML =
-          `<span class="amount">${fmt(monto)}</span>` +
-          (p.comeCarne && nCarne > 0
-            ? `<br><span class="amount-muted">base ${fmt(basePorPersona)} + carne ${fmt(extraCarne)}</span>`
-            : '');
+        const amountHtml = neto >= 0
+          ? `<span class="amount">${fmt(neto)}</span>`
+          : `<span class="amount neg">-${fmt(-neto)}</span>`;
+        let note = '';
+        if (paid > 0) note = `consumo ${fmt(share)} − pagó ${fmt(paid)}` + (neto < 0 ? ' · a favor' : '');
+        else if (p.comeCarne && nCarne > 0) note = `base ${fmt(basePorPersona)} + carne ${fmt(extraCarne)}`;
+        cell.innerHTML = amountHtml + (note ? `<br><span class="amount-muted">${note}</span>` : '');
       }
     });
 
@@ -958,10 +1059,21 @@
         ? `${pendingCount} persona${pendingCount !== 1 ? 's' : ''}`
         : (nTotal > 0 ? '¡todo cobrado! ✓' : '');
 
-    // Round-up means we collect a little more than spent — show the surplus
-    const sobra = aCobrar - totalGastos;
+    // Round-up means shares collect a little more than spent — show the surplus.
+    const sobra = sumShares - totalGastos;
     document.getElementById('stat-sobra').textContent =
       sobra > 0.005 ? `Sobra ${fmt(sobra)} por redondeo` : '';
+  }
+
+  // Kilos with up to 2 decimals, es-AR (e.g. 2,4 kg).
+  function fmtKg(k) {
+    return k.toLocaleString('es-AR', { maximumFractionDigits: 2 }) + ' kg';
+  }
+
+  function onKgChange(value) {
+    kgPorPersona = parseFloat(value) || 0;
+    try { localStorage.setItem(KG_KEY, String(kgPorPersona)); } catch (e) {}
+    recalc();
   }
 
   // Always round UP to whole pesos (17.82 → 18). Epsilon avoids
@@ -1122,13 +1234,18 @@
     `).join('');
   }
 
-  async function addRosterPerson() {
+  async function createRosterPerson({ name = '', last_name = '', come_carne = true }) {
     const id = uid();
-    const person = { id, name: '', last_name: '', come_carne: true };
+    const person = { id, name, last_name, come_carne };
     roster.unshift(person);
     renderRoster();
     try { await api('POST', '/api/people', person); } catch (e) {}
     updateDatalist();
+    return id;
+  }
+
+  async function addRosterPerson() {
+    await createRosterPerson({ name: '', last_name: '', come_carne: true });
   }
 
   async function updateRosterPerson(id, field, value) {
@@ -1337,6 +1454,12 @@
 
   // Boot
   loadCfg();
+  // Restore grams-of-meat-per-person preference and reflect it in the input.
+  try {
+    const k = localStorage.getItem(KG_KEY);
+    if (k !== null && k !== '') kgPorPersona = parseFloat(k) || 0;
+  } catch (e) {}
+  document.getElementById('kg-input').value = kgPorPersona;
   reflectMode();
   if (apiEnabled()) {
     initOnline();

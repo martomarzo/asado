@@ -27,8 +27,12 @@ create table if not exists expenses (
   description text not null default '',
   price       numeric(12,2) not null default 0,
   es_carne    boolean not null default false,
+  paid_by     text,            -- participant id who fronted this expense (credited to them); null = host
   position    integer not null default 0
 );
+
+-- Add paid_by to pre-existing expense tables (idempotent).
+alter table expenses add column if not exists paid_by text;
 
 create table if not exists asado_participants (
   id          text primary key,
