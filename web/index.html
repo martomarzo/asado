@@ -1520,7 +1520,6 @@
       const amountText = neto >= 0 ? fmt(neto) : '-' + fmt(-neto);
       let note = '';
       if (paid > 0) note = `consumo ${fmt(share)} − pagó ${fmt(paid)}` + (neto < 0 ? ' · a favor' : '');
-      else if (p.comeCarne && nCarne > 0) note = `base ${fmt(basePorPersona)} + carne ${fmt(extraCarne)}`;
       document.querySelectorAll('.cobrar-amount[data-pid="' + p.id + '"]').forEach(el => {
         el.textContent = amountText;
         el.classList.toggle('neg', neto < 0);
