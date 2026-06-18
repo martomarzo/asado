@@ -1,11 +1,16 @@
 import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import 'dotenv/config';
 
 const { Pool } = pg;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const TOKEN = process.env.API_TOKEN;
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const WEB_DIR = process.env.WEB_DIR || path.join(__dirname, 'web');
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -131,6 +136,16 @@ app.delete('/api/asados/:id', wrap(async (req, res) => {
   await pool.query('delete from asados where id = $1', [req.params.id]);
   res.json({ ok: true });
 }));
+
+// ---- Serve the frontend (same-origin) with auto-injected config ----
+// /config.js hands the browser the shared token so a shared URL "just works"
+// with no setup. LAN/VPN only: anyone who can load the page can already reach
+// the API, so exposing the token here doesn't widen the trust boundary.
+app.get('/config.js', (req, res) => {
+  res.type('application/javascript')
+     .send(`window.ASADO_CONFIG = ${JSON.stringify({ token: TOKEN || '' })};`);
+});
+app.use(express.static(WEB_DIR));
 
 const port = process.env.PORT || 8787;
 app.listen(port, () => console.log(`asado-api listening on :${port}`));

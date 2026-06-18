@@ -561,6 +561,10 @@
 <!-- Datalist for roster autocomplete on participant names -->
 <datalist id="roster-datalist"></datalist>
 
+<!-- When served by the API, this provides window.ASADO_CONFIG so the page
+     auto-connects (no setup). Absent/404 when opened as a local file → offline. -->
+<script src="config.js"></script>
+
 <!-- SETTINGS MODAL -->
 <div class="overlay" id="settings-overlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -636,7 +640,15 @@
   // Config / API helpers
   // ---------------------------------------------------------------------------
   function loadCfg() {
-    try { const s = localStorage.getItem(CFG_KEY); if (s) cfg = { baseUrl: '', token: '', ...JSON.parse(s) }; } catch (e) {}
+    // A stored config (the user's explicit choice, including "Modo offline")
+    // always wins. Otherwise, if the API served us a config (window.ASADO_CONFIG),
+    // adopt it pointed at this same origin — so a shared URL connects with no setup.
+    let stored = null;
+    try { const s = localStorage.getItem(CFG_KEY); if (s) stored = JSON.parse(s); } catch (e) {}
+    if (stored) { cfg = { baseUrl: '', token: '', ...stored }; return; }
+    if (window.ASADO_CONFIG && window.ASADO_CONFIG.token) {
+      cfg = { baseUrl: window.ASADO_CONFIG.baseUrl || location.origin, token: window.ASADO_CONFIG.token };
+    }
   }
   function saveCfg() { try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {} }
   function apiEnabled() { return !!(cfg.baseUrl && cfg.token); }

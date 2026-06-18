@@ -8,6 +8,10 @@ services:
       # Bind to the VM's LAN/Tailscale IP only (set HOST_IP in .env), not 0.0.0.0.
       # Falls back to all interfaces if HOST_IP is unset — set it for LAN-only safety.
       - "${HOST_IP:-0.0.0.0}:8787:8787"
+    volumes:
+      # Serve the frontend (web/index.html) straight from the API container, so a
+      # shared URL "just works". Read-only; edit the HTML and refresh — no rebuild.
+      - ../web:/app/web:ro
 
 # DB note: this connects to your existing Postgres LXC via DATABASE_URL in .env.
 # If you ever want a fully self-contained stack, add a `postgres` service here and
