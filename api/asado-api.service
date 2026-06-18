@@ -1,0 +1,16 @@
+[Unit]
+Description=Asado API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/asado-api
+ExecStart=/usr/bin/node server.js
+EnvironmentFile=/opt/asado-api/.env
+Restart=always
+RestartSec=3
+User=asado
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

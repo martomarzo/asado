@@ -1,0 +1,10 @@
+# Dependencies
+node_modules/
+
+# Secrets / local config
+.env
+*.local
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

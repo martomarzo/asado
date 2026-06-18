@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculador de Asado 🔥</title>
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --surface: #242424;
+    --surface2: #2e2e2e;
+    --border: #3a3a3a;
+    --accent: #e8621a;
+    --accent-dim: #c0511300;
+    --green: #2ecc71;
+    --red: #e74c3c;
+    --text: #f0f0f0;
+    --text-muted: #a8a8a8;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  header p { color: var(--text-muted); margin-top: 4px; font-size: 0.9rem; }
+
+  /* Resumen (always visible) */
+  .resumen-wrap {
+    max-width: 720px;
+    margin: 0 auto 20px;
+  }
+
+  /* Tabs */
+  .tabs {
+    max-width: 720px;
+    margin: 0 auto 20px;
+    display: flex;
+    gap: 10px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 13px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+
+  .tab-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  .tab-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .panel {
+    max-width: 720px;
+    margin: 0 auto;
+    display: none;
+  }
+
+  .panel.active { display: block; }
+
+  /* Resumen hero numbers */
+  .hero-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .hero {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 16px 12px;
+    text-align: center;
+  }
+
+  .hero-label { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .hero-value { font-size: 1.9rem; font-weight: 800; margin-top: 6px; font-variant-numeric: tabular-nums; color: var(--text); }
+  .hero-value.green { color: var(--green); }
+  .hero-value.red { color: var(--red); }
+  .hero-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; }
+
+  /* Resumen secondary line (expense breakdown) */
+  .resumen-meta {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    font-size: 0.86rem;
+    color: var(--text-muted);
+  }
+  .resumen-meta b { color: var(--text); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .resumen-meta .sobra { color: var(--accent); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+
+  .card-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title span { color: var(--accent); font-size: 1.2rem; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+
+  th {
+    text-align: left;
+    padding: 6px 8px;
+    color: var(--text-muted);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  td {
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  input[type="text"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 5px 8px;
+    font-size: 0.88rem;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type="text"]:focus { border-color: var(--accent); }
+
+  input[type="number"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 5px 8px;
+    font-size: 0.88rem;
+    width: 80px;
+    outline: none;
+    text-align: right;
+    transition: border-color 0.15s;
+  }
+
+  input[type="number"]:focus { border-color: var(--accent); }
+
+  input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  /* Bigger tap area around row checkboxes */
+  .col-chk { width: 60px; }
+  .col-chk label.chk {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    cursor: pointer;
+  }
+
+  .del-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .del-btn:hover { color: var(--red); background: rgba(231,76,60,0.1); }
+
+  .add-btn {
+    margin-top: 12px;
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    border-radius: 7px;
+    padding: 7px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    width: 100%;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .add-btn-top { margin-top: 0; margin-bottom: 14px; }
+
+  /* Per-person amount */
+  .amount { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .amount-muted { color: var(--text-muted); font-size: 0.8rem; }
+
+  /* Pagó toggle button (big tap target) */
+  .pay-btn {
+    min-width: 92px;
+    min-height: 40px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .pay-btn:hover { border-color: var(--green); color: var(--green); }
+  .pay-btn.paid {
+    background: rgba(46,204,113,0.16);
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  /* Paid rows recede so unpaid (who still owes) stands out */
+  .row-paid input[type="text"] { color: var(--text-muted); text-decoration: line-through; }
+  .row-paid .amount { color: var(--text-muted); text-decoration: line-through; font-weight: 600; }
+
+  .reset-btn {
+    margin-top: 20px;
+    float: right;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .reset-btn:hover { border-color: var(--red); color: var(--red); }
+
+  .empty { color: var(--text-muted); font-size: 0.85rem; padding: 12px 0; text-align: center; }
+
+  /* One-line helper text under a card title */
+  .helper {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: -8px 0 14px;
+    line-height: 1.4;
+  }
+
+  .col-del { width: 36px; text-align: center; }
+  .col-pay { width: 110px; text-align: center; }
+
+  /* Prevent iOS auto-zoom on focus; roomier rows on phones */
+  @media (max-width: 700px) {
+    input[type="text"], input[type="number"] { font-size: 16px; }
+    .hero-value { font-size: 1.5rem; }
+    td { padding: 10px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔥 Calculador de Asado</h1>
+  <p>Ingresá los gastos y las personas para calcular cuánto paga cada uno</p>
+</header>
+
+<!-- RESUMEN (siempre visible) -->
+<div class="resumen-wrap">
+  <div class="card">
+    <div class="card-title"><span>📊</span> Resumen</div>
+    <div class="hero-grid">
+      <div class="hero">
+        <div class="hero-label">Total a Cobrar</div>
+        <div class="hero-value" id="stat-acobrar">$0</div>
+      </div>
+      <div class="hero">
+        <div class="hero-label">Cobrado</div>
+        <div class="hero-value green" id="stat-cobrado">$0</div>
+      </div>
+      <div class="hero">
+        <div class="hero-label">Falta</div>
+        <div class="hero-value red" id="stat-falta">$0</div>
+        <div class="hero-sub" id="stat-falta-sub"></div>
+      </div>
+    </div>
+
+    <div class="resumen-meta">
+      <span>Gastos <b id="stat-total">$0</b></span>
+      <span>Carne <b id="stat-carne">$0</b></span>
+      <span>Sin carne <b id="stat-sin-carne">$0</b></span>
+      <span><b id="stat-personas">0</b> personas · <b id="stat-comen-carne">0</b> comen carne</span>
+      <span class="sobra" id="stat-sobra"></span>
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="gastos" onclick="showTab('gastos')">💸 Gastos</button>
+  <button class="tab-btn" data-tab="personas" onclick="showTab('personas')">👥 Personas y Pagos</button>
+</div>
+
+<!-- TAB: GASTOS -->
+<div class="panel active" data-tab="gastos">
+  <div class="card">
+    <div class="card-title"><span>💸</span> Gastos</div>
+    <p class="helper">Marcá 🥩 en los gastos de carne: se reparten solo entre los que comen carne. El resto se divide entre todos.</p>
+    <button class="add-btn add-btn-top" onclick="addGasto()">+ Agregar gasto</button>
+    <table id="gastos-table">
+      <thead>
+        <tr>
+          <th>Descripción</th>
+          <th style="text-align:right">Precio ($)</th>
+          <th class="col-chk" title="¿Es un gasto de carne?">🥩 Carne</th>
+          <th class="col-del"></th>
+        </tr>
+      </thead>
+      <tbody id="gastos-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB: PERSONAS Y PAGOS -->
+<div class="panel" data-tab="personas">
+  <div class="card">
+    <div class="card-title"><span>👥</span> Personas</div>
+    <button class="add-btn add-btn-top" onclick="addPersona()">+ Agregar persona</button>
+    <table id="personas-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th class="col-chk" title="¿Come carne?">🥩 Carne</th>
+          <th style="text-align:right">A Pagar</th>
+          <th class="col-chk" title="¿Pagó?">✓ Pagó</th>
+          <th class="col-del"></th>
+        </tr>
+      </thead>
+      <tbody id="personas-body"></tbody>
+    </table>
+
+    <button class="reset-btn" onclick="resetAll()">🗑 Borrar todo</button>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'asado-v1';
+
+  let state = {
+    gastos: [],
+    personas: []
+  };
+
+  function load() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) state = JSON.parse(saved);
+    } catch(e) {}
+    if (!state.gastos) state.gastos = [];
+    if (!state.personas) state.personas = [];
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      // localStorage puede estar bloqueado (ej. abriendo el archivo con file://).
+      // La app sigue funcionando en memoria aunque no se pueda guardar.
+    }
+  }
+
+  function uid() {
+    return Math.random().toString(36).slice(2, 9);
+  }
+
+  function addGasto(nombre = '', precio = '', esCarne = false) {
+    const id = uid();
+    state.gastos.unshift({ id, nombre, precio, esCarne });
+    save();
+    renderGastos();
+    recalc();
+    return id;
+  }
+
+  function onGastoKey(e, id) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const newId = addGasto();
+      const el = document.getElementById('gasto-name-' + newId);
+      if (el) el.focus();
+    }
+  }
+
+  function addPersona(nombre = '', comeCarne = true, pagado = false) {
+    const id = uid();
+    state.personas.unshift({ id, nombre, comeCarne, pagado });
+    save();
+    renderPersonas();
+    recalc();
+    return id;
+  }
+
+  function onPersonaKey(e, id) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const newId = addPersona();
+      const el = document.getElementById('persona-name-' + newId);
+      if (el) el.focus();
+    }
+  }
+
+  function delGasto(id) {
+    state.gastos = state.gastos.filter(g => g.id !== id);
+    save();
+    renderGastos();
+    recalc();
+  }
+
+  function delPersona(id) {
+    state.personas = state.personas.filter(p => p.id !== id);
+    save();
+    renderPersonas();
+    recalc();
+  }
+
+  function onGastoChange(id, field, value) {
+    const g = state.gastos.find(g => g.id === id);
+    if (!g) return;
+    g[field] = value;
+    save();
+    recalc();
+  }
+
+  function onPersonaChange(id, field, value) {
+    const p = state.personas.find(p => p.id === id);
+    if (!p) return;
+    p[field] = value;
+    save();
+    recalc();
+  }
+
+  function renderGastos() {
+    const tbody = document.getElementById('gastos-body');
+    if (state.gastos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty">No hay gastos cargados</td></tr>';
+      return;
+    }
+    tbody.innerHTML = state.gastos.map(g => `
+      <tr>
+        <td><input type="text" id="gasto-name-${g.id}" value="${esc(g.nombre)}" placeholder="Descripción"
+          oninput="onGastoChange('${g.id}','nombre',this.value)"
+          onkeydown="onGastoKey(event,'${g.id}')"></td>
+        <td><input type="number" value="${g.precio}" placeholder="0" min="0" step="0.01"
+          oninput="onGastoChange('${g.id}','precio',parseFloat(this.value)||0)"
+          onkeydown="onGastoKey(event,'${g.id}')"></td>
+        <td class="col-chk"><label class="chk"><input type="checkbox" aria-label="Es gasto de carne" ${g.esCarne ? 'checked' : ''}
+          onchange="onGastoChange('${g.id}','esCarne',this.checked)"></label></td>
+        <td class="col-del"><button class="del-btn" aria-label="Borrar gasto" onclick="delGasto('${g.id}')">✕</button></td>
+      </tr>
+    `).join('');
+  }
+
+  function renderPersonas() {
+    const tbody = document.getElementById('personas-body');
+    if (state.personas.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">No hay personas cargadas</td></tr>';
+      return;
+    }
+    tbody.innerHTML = state.personas.map(p => `
+      <tr class="${p.pagado ? 'row-paid' : ''}">
+        <td><input type="text" id="persona-name-${p.id}" value="${esc(p.nombre)}" placeholder="Nombre"
+          oninput="onPersonaChange('${p.id}','nombre',this.value)"
+          onkeydown="onPersonaKey(event,'${p.id}')"></td>
+        <td class="col-chk" title="¿Come carne?"><label class="chk"><input type="checkbox" aria-label="Come carne" ${p.comeCarne ? 'checked' : ''}
+          onchange="onPersonaChange('${p.id}','comeCarne',this.checked)"></label></td>
+        <td style="text-align:right"><span id="pago-${p.id}"></span></td>
+        <td class="col-pay"><button class="pay-btn ${p.pagado ? 'paid' : ''}" aria-pressed="${p.pagado}"
+          aria-label="${p.pagado ? 'Pagó (tocá para desmarcar)' : 'Marcar como pagado'}"
+          onclick="setPagado('${p.id}', ${!p.pagado})">${p.pagado ? '✓ Pagó' : 'Cobrar'}</button></td>
+        <td class="col-del"><button class="del-btn" aria-label="Borrar persona" onclick="delPersona('${p.id}')">✕</button></td>
+      </tr>
+    `).join('');
+  }
+
+  function setPagado(id, val) {
+    const p = state.personas.find(p => p.id === id);
+    if (!p) return;
+    p.pagado = val;
+    save();
+    renderPersonas(); // re-render to apply paid-row styling
+    recalc();
+  }
+
+  function recalc() {
+    const totalGastos = state.gastos.reduce((s, g) => s + (parseFloat(g.precio) || 0), 0);
+    const totalCarne = state.gastos.filter(g => g.esCarne).reduce((s, g) => s + (parseFloat(g.precio) || 0), 0);
+    const totalSinCarne = totalGastos - totalCarne;
+    const nTotal = state.personas.length;
+    const nCarne = state.personas.filter(p => p.comeCarne).length;
+
+    document.getElementById('stat-total').textContent = fmt(totalGastos);
+    document.getElementById('stat-carne').textContent = fmt(totalCarne);
+    document.getElementById('stat-sin-carne').textContent = fmt(totalSinCarne);
+    document.getElementById('stat-personas').textContent = nTotal;
+    document.getElementById('stat-comen-carne').textContent = nCarne;
+
+    // Round each component UP to whole pesos so people pay round numbers
+    // and the breakdown (base + carne) always adds up to the shown total.
+    const basePorPersona = roundUp(nTotal > 0 ? totalSinCarne / nTotal : 0);
+    const extraCarne = roundUp(nCarne > 0 ? totalCarne / nCarne : 0);
+
+    let aCobrar = 0;
+    let cobrado = 0;
+    let pendiente = 0;
+
+    // Update each person's amount in place (no re-render → keeps input focus)
+    state.personas.forEach(p => {
+      const monto = basePorPersona + (p.comeCarne ? extraCarne : 0);
+      aCobrar += monto;
+      if (p.pagado) cobrado += monto;
+      else pendiente += monto;
+
+      const cell = document.getElementById('pago-' + p.id);
+      if (cell) {
+        cell.innerHTML =
+          `<span class="amount">${fmt(monto)}</span>` +
+          (p.comeCarne && nCarne > 0
+            ? `<br><span class="amount-muted">base ${fmt(basePorPersona)} + carne ${fmt(extraCarne)}</span>`
+            : '');
+      }
+    });
+
+    document.getElementById('stat-acobrar').textContent = fmt(aCobrar);
+    document.getElementById('stat-cobrado').textContent = fmt(cobrado);
+    document.getElementById('stat-falta').textContent = fmt(pendiente);
+
+    const pendingCount = state.personas.filter(p => !p.pagado).length;
+    document.getElementById('stat-falta-sub').textContent =
+      pendiente > 0.005
+        ? `${pendingCount} persona${pendingCount !== 1 ? 's' : ''}`
+        : (nTotal > 0 ? '¡todo cobrado! ✓' : '');
+
+    // Round-up means we collect a little more than spent — show the surplus
+    const sobra = aCobrar - totalGastos;
+    document.getElementById('stat-sobra').textContent =
+      sobra > 0.005 ? `Sobra ${fmt(sobra)} por redondeo` : '';
+  }
+
+  // Always round UP to whole pesos (17.82 → 18). Epsilon avoids
+  // floating-point noise pushing an exact integer up (57.0000001 → 58).
+  function roundUp(n) {
+    return Math.ceil(n - 1e-6);
+  }
+
+  function fmt(n) {
+    const v = Math.round(n * 100) / 100;
+    const isInt = Math.abs(v - Math.round(v)) < 0.005;
+    return '$' + v.toLocaleString('es-AR', { minimumFractionDigits: isInt ? 0 : 2, maximumFractionDigits: 2 });
+  }
+
+  function esc(s) {
+    return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  }
+
+  function resetAll() {
+    if (!confirm('¿Borrar todos los gastos y personas?')) return;
+    state = { gastos: [], personas: [] };
+    save();
+    renderGastos();
+    renderPersonas();
+    recalc();
+  }
+
+  function showTab(name) {
+    document.querySelectorAll('.panel').forEach(p =>
+      p.classList.toggle('active', p.dataset.tab === name));
+    document.querySelectorAll('.tab-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.tab === name));
+    try { localStorage.setItem('asado-tab', name); } catch (e) {}
+  }
+
+  // Init
+  load();
+  renderGastos();
+  renderPersonas();
+  recalc();
+
+  let savedTab = 'gastos';
+  try { savedTab = localStorage.getItem('asado-tab') || 'gastos'; } catch (e) {}
+  showTab(savedTab);
+
+  // Pre-populate from the original spreadsheet if empty.
+  // addGasto prepends, so seed in reverse to keep Carbón first on screen.
+  if (state.gastos.length === 0 && state.personas.length === 0) {
+    addGasto('Hielo', 20, false);
+    addGasto('Picada', 20, false);
+    addGasto('Verduras', 50, false);
+    addGasto('Carne', 150, true);
+    addGasto('Tablas', 21, false);
+    addGasto('Carbón', 60, false);
+  }
+</script>
+</body>
+</html>

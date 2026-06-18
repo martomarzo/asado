@@ -1,0 +1,145 @@
+# Asado Calculator — Project Plan
+
+> Self-contained handoff doc. This project is **independent** from the bullmedia
+> (`bullmg-admin`) software. Open a Claude/dev session **in this folder**
+> (`asado-calculator/`), not in the work repo.
+
+## What this is
+
+A tool to split the cost of an asado: enter expenses, mark who eats meat and who
+paid, and it calculates what each person owes. Meat expenses are split only among
+meat-eaters; everything else is split among everyone. Amounts round **up** to whole
+pesos.
+
+Currently a single-file frontend with `localStorage`. We're adding a small backend
+so data is **portable** (not trapped in one browser), supports **multiple asados**,
+and keeps a **persistent people roster** to recall for future events.
+
+## Goals
+
+1. Store multiple asados (events) server-side, not in localStorage.
+2. Persistent people roster — reuse the same people across asados.
+3. Portable: open the app from anywhere on the LAN/VPN and see the same data.
+4. Single user (just the owner). LAN/VPN only — no public exposure.
+
+## Architecture (decided)
+
+| Piece | Decision |
+|---|---|
+| Frontend | Single HTML file (`web/index.html`), vanilla JS. Talks to the API via `fetch`, with a localStorage fallback when no API is configured. |
+| Backend | Tiny Node + Express API (`api/`). |
+| Backend hosting | **Docker container on the existing Docker VM** (the one running Karakeep etc.) — no new LXC. |
+| Database | New `asado` database on the **existing Postgres LXC** (reuse it; don't spin up a new DB). |
+| Access | LAN / VPN (Tailscale) only. Bind the published port to the VM's LAN/tailnet IP. |
+| Auth | Single shared bearer token (`API_TOKEN`). |
+
+Reference environment: `containers` box is Debian 13 / Node 22 — the Docker image
+uses `node:22-alpine`.
+
+## Folder structure
+
+```
+asado-calculator/
+├── plan.md            ← this file
+├── api/               ← Node + Express backend
+│   ├── server.js          API (people + asados CRUD, bearer auth, txn save)
+│   ├── schema.sql         tables: people, asados, expenses, asado_participants
+│   ├── migrate.js         `npm run migrate` applies schema.sql
+│   ├── package.json
+│   ├── Dockerfile         node:22-alpine
+│   ├── docker-compose.yml builds + runs on the Docker VM
+│   ├── .dockerignore
+│   ├── .env.example       copy to .env and fill in
+│   ├── asado-api.service  (alt: systemd, if NOT using Docker)
+│   └── README.md          endpoint reference + non-Docker runbook
+└── web/
+    └── index.html      ← the app (frontend)
+```
+
+## Data model
+
+- **people**: `id` (client text id), `name`, `come_carne`
+- **asados**: `id`, `name`, `event_date`, timestamps
+- **expenses**: `id`, `asado_id`→asados, `description`, `price`, `es_carne`, `position`
+- **asado_participants**: `id`, `asado_id`→asados, `person_id`→people (nullable, the
+  roster link), `name`, `come_carne`, `pagado`, `position`
+
+Primary keys are **client-supplied text ids** (frontend already generates them), so
+"save the whole asado" stays simple and stable.
+
+## API (built — see `api/README.md` for details)
+
+- `GET /api/health` — no auth, reachability check
+- People: `GET/POST /api/people`, `PUT/DELETE /api/people/:id`
+- Asados: `GET/POST /api/asados`, `GET/PUT/DELETE /api/asados/:id`
+- `PUT /api/asados/:id` does a **full transactional replace** of that asado's
+  expenses + participants — mirrors the frontend's whole-state save.
+- All `/api/*` except health require `Authorization: Bearer <API_TOKEN>`.
+
+## Status
+
+- [x] Backend code (server, schema, migration)
+- [x] Docker packaging (Dockerfile, compose, .dockerignore)
+- [x] Deploy runbook (`api/README.md`)
+- [x] Project split into its own folder
+- [ ] **Create `asado` DB + user on the Postgres LXC** (see Deploy step 1)
+- [ ] **Deploy the API container on the Docker VM** (see Deploy step 2)
+- [ ] Confirm `/api/health` reachable from the LAN
+- [ ] **Frontend rework** (the big remaining piece — see below)
+- [ ] (optional) git repo for this folder
+- [ ] (optional) host `web/index.html` somewhere on the LAN
+
+## Frontend rework — TODO (next major step)
+
+Build only once the API is reachable, so it can be verified end-to-end:
+
+1. **Settings**: a small gear to set API base URL + token, saved in localStorage.
+   If unset → app runs in offline localStorage mode (current behavior).
+2. **Asado selector**: dropdown to pick / create / rename / delete an asado.
+   Loads `GET /api/asados/:id` into the current state.
+3. **Save**: replace `save()` with a debounced `PUT /api/asados/:id` (whole state).
+   Keep localStorage as offline cache / fallback.
+4. **Roster recall**: when adding a participant, autocomplete from `GET /api/people`
+   (datalist). Picking one links `person_id` + copies name/come_carne. A "Roster"
+   view to manage saved people (add/edit/remove).
+5. **Migration**: one-time "import my current localStorage data into an asado" so
+   nothing already entered is lost.
+
+Preserve everything already polished: tabs, always-visible Resumen, round-up,
+paid-row styling, Enter-to-add, accessibility.
+
+## Deploy
+
+### Step 1 — Postgres LXC: create DB + user
+```bash
+sudo -u postgres psql <<'SQL'
+CREATE USER asado WITH PASSWORD 'PICK_A_STRONG_PASSWORD';
+CREATE DATABASE asado OWNER asado;
+SQL
+```
+Allow the Docker VM to connect (adjust subnet):
+- `postgresql.conf`: `listen_addresses = '*'`
+- `pg_hba.conf`: `host  asado  asado  <DOCKER_VM_SUBNET> scram-sha-256`
+- `sudo systemctl restart postgresql`
+
+### Step 2 — Docker VM: run the API
+```bash
+# get the code onto the VM (git clone or rsync this folder), then:
+cd asado-calculator/api
+cp .env.example .env
+nano .env            # DATABASE_URL → PG LXC IP; API_TOKEN → openssl rand -hex 32; HOST_IP → VM LAN/tailnet IP
+docker compose up -d --build
+docker compose exec asado-api npm run migrate   # create tables (first run only)
+docker compose logs -f asado-api
+```
+
+### Step 3 — Test
+```bash
+curl -s http://<DOCKER_VM_IP>:8787/api/health                 # {"ok":true}
+curl -s -H "Authorization: Bearer <TOKEN>" http://<DOCKER_VM_IP>:8787/api/people   # []
+```
+
+## Open questions / to confirm
+- Postgres LXC IP + whether to create the DB myself (need access) or you will.
+- Docker VM IP / how you reach it (LAN IP vs Tailscale).
+- git repo for this folder? (recommended, standalone — not inside bullmg-admin)
