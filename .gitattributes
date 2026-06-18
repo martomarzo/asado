@@ -1,0 +1,7 @@
+# Normalize line endings. This repo deploys to Linux (Docker VM / LXC),
+# so keep LF in the repo even though we develop on Windows — CRLF in
+# Dockerfiles, shell, and systemd units breaks on Linux.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
