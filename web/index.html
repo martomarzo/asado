@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calculador de Asado 🔥</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🍖</text></svg>">
 <style>
   :root {
     --bg: #1a1a1a;
@@ -549,6 +550,7 @@
       <thead>
         <tr>
           <th>Nombre</th>
+          <th>Apellido</th>
           <th class="col-chk" title="¿Come carne?">🥩 Carne</th>
           <th class="col-del"></th>
         </tr>
@@ -855,9 +857,13 @@
   function onPersonaNameCommit(id, value) {
     const p = state.personas.find(p => p.id === id);
     if (!p) return;
-    const match = roster.find(r => r.name.trim().toLowerCase() === (value || '').trim().toLowerCase());
+    const v = (value || '').trim().toLowerCase();
+    // Match a roster person by full name ("Nombre Apellido"), or by first name alone.
+    const match = roster.find(r => rosterFullName(r).toLowerCase() === v)
+               || roster.find(r => (r.name || '').trim().toLowerCase() === v);
     if (match) {
       p.personId = match.id;
+      p.nombre = rosterFullName(match);
       p.comeCarne = !!match.come_carne;
       save();
       renderPersonas();
@@ -1087,21 +1093,28 @@
     updateDatalist();
   }
 
+  // Full display name for a roster person: "Nombre Apellido" (trimmed).
+  function rosterFullName(r) {
+    return ((r.name || '') + ' ' + (r.last_name || '')).trim();
+  }
+
   function updateDatalist() {
     document.getElementById('roster-datalist').innerHTML =
-      roster.map(r => `<option value="${esc(r.name)}">`).join('');
+      roster.map(r => `<option value="${esc(rosterFullName(r))}">`).join('');
   }
 
   function renderRoster() {
     const tbody = document.getElementById('roster-body');
     if (roster.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" class="empty">El roster está vacío</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="empty">El roster está vacío</td></tr>';
       return;
     }
     tbody.innerHTML = roster.map(r => `
       <tr>
         <td><input type="text" value="${esc(r.name)}" placeholder="Nombre"
           onchange="updateRosterPerson('${r.id}','name',this.value)"></td>
+        <td><input type="text" value="${esc(r.last_name || '')}" placeholder="Apellido"
+          onchange="updateRosterPerson('${r.id}','last_name',this.value)"></td>
         <td class="col-chk"><label class="chk"><input type="checkbox" aria-label="Come carne" ${r.come_carne ? 'checked' : ''}
           onchange="updateRosterPerson('${r.id}','come_carne',this.checked)"></label></td>
         <td class="col-del"><button class="del-btn" aria-label="Quitar del roster" onclick="deleteRosterPerson('${r.id}')">✕</button></td>
@@ -1111,7 +1124,7 @@
 
   async function addRosterPerson() {
     const id = uid();
-    const person = { id, name: '', come_carne: true };
+    const person = { id, name: '', last_name: '', come_carne: true };
     roster.unshift(person);
     renderRoster();
     try { await api('POST', '/api/people', person); } catch (e) {}
@@ -1123,7 +1136,8 @@
     if (!r) return;
     r[field] = value;
     try {
-      await api('PUT', '/api/people/' + encodeURIComponent(id), { name: r.name, come_carne: !!r.come_carne });
+      await api('PUT', '/api/people/' + encodeURIComponent(id),
+        { name: r.name, last_name: r.last_name || '', come_carne: !!r.come_carne });
     } catch (e) {}
     updateDatalist();
     // keep linked participants' names in sync visually on next render

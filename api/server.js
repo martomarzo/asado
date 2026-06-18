@@ -36,23 +36,24 @@ const wrap = (fn) => (req, res) => fn(req, res).catch((err) => {
 
 // ---- People (persistent roster) ----
 app.get('/api/people', wrap(async (req, res) => {
-  const { rows } = await pool.query('select id, name, come_carne from people order by name');
+  const { rows } = await pool.query('select id, name, last_name, come_carne from people order by name, last_name');
   res.json(rows);
 }));
 
 app.post('/api/people', wrap(async (req, res) => {
-  const { id, name, come_carne = true } = req.body;
+  const { id, name, last_name = '', come_carne = true } = req.body;
   await pool.query(
-    `insert into people (id, name, come_carne) values ($1, $2, $3)
-     on conflict (id) do update set name = excluded.name, come_carne = excluded.come_carne`,
-    [id, name, come_carne]
+    `insert into people (id, name, last_name, come_carne) values ($1, $2, $3, $4)
+     on conflict (id) do update set name = excluded.name, last_name = excluded.last_name, come_carne = excluded.come_carne`,
+    [id, name, last_name, come_carne]
   );
   res.json({ ok: true, id });
 }));
 
 app.put('/api/people/:id', wrap(async (req, res) => {
-  const { name, come_carne } = req.body;
-  await pool.query('update people set name = $2, come_carne = $3 where id = $1', [req.params.id, name, come_carne]);
+  const { name, last_name = '', come_carne } = req.body;
+  await pool.query('update people set name = $2, last_name = $3, come_carne = $4 where id = $1',
+    [req.params.id, name, last_name, come_carne]);
   res.json({ ok: true });
 }));
 

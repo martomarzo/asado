@@ -5,9 +5,13 @@
 create table if not exists people (
   id          text primary key,
   name        text not null,
+  last_name   text not null default '',
   come_carne  boolean not null default true,
   created_at  timestamptz not null default now()
 );
+
+-- Add last_name to pre-existing roster tables (idempotent).
+alter table people add column if not exists last_name text not null default '';
 
 create table if not exists asados (
   id          text primary key,
