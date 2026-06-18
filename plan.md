@@ -138,14 +138,27 @@ load the page; acceptable because access is LAN/VPN-only (same trust boundary).
 Editing `web/index.html` + refreshing is enough (no rebuild); a `server.js`
 change needs `docker compose up -d --build`.
 
-**Updating later** (repo is private, VM has no git creds — push code over SSH):
+**Auto-deploy (CI/CD).** The repo is **public**, and the VM's app dir is a git
+checkout of `origin/main`. A systemd timer redeploys automatically — just push:
+
+- `deploy.sh` (repo root): `git fetch`; if `origin/main` moved, `git reset --hard`
+  to it, then rebuild the api container **only if `api/` changed** (web/ is served
+  live via the volume mount), and re-run `migrate` if `schema.sql` changed.
+- `deploy/asado-deploy.service` + `asado-deploy.timer` → installed to
+  `/etc/systemd/system/`, polling every minute (`OnUnitActiveSec=1min`).
+
+So **any push from any machine** lands on the server within ~1 min. No secrets,
+no inbound (GitHub can't reach the tailnet — this is pull-based). The untracked
+`api/.env` (DB URL, token, `TS_AUTHKEY`) is preserved across resets; a backup is
+at `/root/asado-env.bak` on the VM.
+
 ```bash
-# from this folder, on a machine that can reach the VM:
-tar czf - --exclude=.git --exclude=node_modules --exclude=api/.env . \
-  | ssh root@docker 'tar xzf - -C /root/containers/asado'
-ssh root@docker 'cd /root/containers/asado/api && docker compose up -d --build'
+# watch / debug the auto-deploy on the VM:
+journalctl -u asado-deploy.service -n 50 --no-pager
+systemctl list-timers asado-deploy.timer
+# force a deploy now instead of waiting for the timer:
+systemctl start asado-deploy.service
 ```
-(Or add a read-only deploy key / make the repo public to use `git pull`.)
 
 ## Deploy (reference runbook)
 
