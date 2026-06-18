@@ -1,18 +1,40 @@
 services:
+  # Per-app Tailscale node: gives this app its own HTTPS hostname
+  # (https://asado.<tailnet>.ts.net) without using the host's tailscale node.
+  # Copy this block per app, changing the hostname + state volume, to add more.
+  ts-asado:
+    image: tailscale/tailscale:latest
+    container_name: ts-asado
+    hostname: asado                       # -> device name "asado" -> asado.<tailnet>.ts.net
+    restart: unless-stopped
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}          # reusable auth key, set in .env
+      - TS_HOSTNAME=asado
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=true                 # serve works in userspace; no tun device needed
+      - TS_SERVE_CONFIG=/config/serve.json
+    volumes:
+      - ts-asado-state:/var/lib/tailscale
+      - ./ts-serve.json:/config/serve.json:ro
+
   asado-api:
     build: .
     container_name: asado-api
     restart: unless-stopped
     env_file: .env
-    ports:
-      # Bind to the VM's LAN/Tailscale IP only (set HOST_IP in .env), not 0.0.0.0.
-      # Falls back to all interfaces if HOST_IP is unset — set it for LAN-only safety.
-      - "${HOST_IP:-0.0.0.0}:8787:8787"
+    # Share the sidecar's network namespace, so `tailscale serve` reaches the API
+    # at 127.0.0.1:8787 and HTTPS terminates on the asado tailnet node.
+    network_mode: service:ts-asado
+    depends_on:
+      - ts-asado
     volumes:
       # Serve the frontend (web/index.html) straight from the API container, so a
       # shared URL "just works". Read-only; edit the HTML and refresh — no rebuild.
       - ../web:/app/web:ro
 
+volumes:
+  ts-asado-state:
+
 # DB note: this connects to your existing Postgres LXC via DATABASE_URL in .env.
-# If you ever want a fully self-contained stack, add a `postgres` service here and
-# point DATABASE_URL at it — but reusing the PG LXC keeps your databases centralized.
+# Access is HTTPS-only over the tailnet (https://asado.<tailnet>.ts.net) — no LAN
+# port is published. Add a `ports:` block under ts-asado if you want raw LAN access.
