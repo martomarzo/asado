@@ -85,9 +85,12 @@ Primary keys are **client-supplied text ids** (frontend already generates them),
 - [x] **Frontend rework** — settings, asado selector, debounced server save,
       roster recall + datalist, one-time localStorage migration (see below)
 - [x] git repo for this folder (pushed to GitHub: `martomarzo/asado`)
-- [ ] **Create `asado` DB + user on the Postgres LXC** (see Deploy step 1)
-- [ ] **Deploy the API container on the Docker VM** (see Deploy step 2)
-- [ ] Confirm `/api/health` reachable from the LAN
+- [x] **Created `asado` DB + role on the Postgres LXC** (`postgresql`, PG17). No
+      `pg_hba` edit needed — the existing `host all all 0.0.0.0/0 md5` catch-all
+      already permits it (auth auto-upgrades to SCRAM).
+- [x] **Deployed the API container on the Docker VM** (`docker`, `containers/asado`).
+      Bound to `0.0.0.0:8787`, `restart: unless-stopped`, tables migrated.
+- [x] Confirmed `/api/health` + authed `/api/people` reachable over LAN and Tailscale
 - [ ] (optional) host `web/index.html` somewhere on the LAN
 
 ## Frontend rework — DONE
@@ -111,7 +114,30 @@ All built into `web/index.html` (still a single vanilla-JS file):
 Preserved: tabs, always-visible Resumen, round-up math, paid-row styling,
 Enter-to-add, accessibility (aria labels / pressed states).
 
-## Deploy
+## Live deployment (as built)
+
+| Piece | Value |
+|---|---|
+| Postgres LXC | `postgresql` — LAN `192.168.0.98`, tailnet `100.85.111.8`, PG 17 |
+| DB / role | `asado` / `asado` (password in the VM's `api/.env`) |
+| Docker VM | `docker` — LAN `192.168.0.105`, tailnet `100.114.36.91` |
+| App dir | `/root/containers/asado` (alongside `karakeep`) |
+| API URL (LAN) | `http://192.168.0.105:8787` |
+| API URL (Tailscale) | `http://100.114.36.91:8787` |
+
+`DATABASE_URL` points at the Postgres LAN IP (`192.168.0.98`); the API binds
+`0.0.0.0:8787` so it answers on both LAN and tailnet.
+
+**Updating later** (repo is private, VM has no git creds — push code over SSH):
+```bash
+# from this folder, on a machine that can reach the VM:
+tar czf - --exclude=.git --exclude=node_modules --exclude=api/.env . \
+  | ssh root@docker 'tar xzf - -C /root/containers/asado'
+ssh root@docker 'cd /root/containers/asado/api && docker compose up -d --build'
+```
+(Or add a read-only deploy key / make the repo public to use `git pull`.)
+
+## Deploy (reference runbook)
 
 ### Step 1 — Postgres LXC: create DB + user
 ```bash
