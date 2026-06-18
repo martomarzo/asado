@@ -12,7 +12,7 @@
     --surface2: #2e2e2e;
     --border: #3a3a3a;
     --accent: #e8621a;
-    --accent-dim: #c0511300;
+    --accent-dim: #c05113;
     --green: #2ecc71;
     --red: #e74c3c;
     --text: #f0f0f0;
@@ -28,6 +28,9 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     min-height: 100vh;
     padding: 24px 16px 60px;
+    /* Never scroll sideways: keeps fixed-position modals locked to the
+       viewport width even if some inner content tries to get too wide. */
+    overflow-x: hidden;
   }
 
   header {
@@ -500,7 +503,31 @@
   @media (max-width: 700px) {
     input[type="text"], input[type="number"], input[type="date"], input[type="password"] { font-size: 16px; }
     .hero-value { font-size: 1.5rem; }
-    td { padding: 10px 8px; }
+
+    /* Tighten the data tables so all columns fit a phone without
+       sideways scroll. The Gastos row is the widest (it has the
+       "Pagado por" picker), so trim fixed widths and padding there. */
+    th, td { padding: 10px 5px; }
+    table { font-size: 0.84rem; }
+    .col-chk { width: 42px; }
+    .col-del { width: 26px; }
+    .col-link { width: 24px; }
+    .col-pay { width: auto; }
+    .pay-btn { min-width: 0; padding: 8px 10px; }
+    .paid-by-btn { min-width: 0; padding: 6px 7px; }
+
+    /* Smaller, wrappable headers so the uppercase labels don't collide
+       once columns get narrow on a phone. */
+    th { font-size: 0.68rem; letter-spacing: 0; padding: 8px 5px; white-space: normal; }
+
+    /* Gastos has two inputs + a picker button; fixed layout lets the
+       width:100% controls shrink to their columns instead of forcing
+       the table wider than the screen (the Personas table fits as-is).
+       Explicit widths favour Descripción + Pagado por; Precio stays narrow. */
+    #gastos-table { table-layout: fixed; }
+    #gastos-table input[type="number"] { width: 100%; }
+    #gastos-table th:nth-child(2), #gastos-table td:nth-child(2) { width: 58px; }
+    #gastos-table th:nth-child(4), #gastos-table td:nth-child(4) { width: 92px; }
   }
 </style>
 </head>
