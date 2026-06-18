@@ -347,6 +347,27 @@
   }
   .roster-add-btn:hover { color: var(--accent); background: rgba(232,98,26,0.12); }
 
+  /* Add-from-roster picker rows */
+  .rp-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 13px;
+    margin-bottom: 8px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.92rem;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .rp-item:hover { border-color: var(--accent); }
+  .rp-item .rp-meat { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+
   /* Pagó toggle button (big tap target) */
   .pay-btn {
     min-width: 92px;
@@ -561,6 +582,7 @@
     <div class="card-title"><span>👥</span> Personas</div>
     <p class="helper" id="personas-helper" style="display:none;">Empezá a escribir un nombre para recuperarlo del roster guardado.</p>
     <button class="add-btn add-btn-top" onclick="addPersona()">+ Agregar persona</button>
+    <button class="add-btn add-btn-top" id="btn-add-from-roster" style="display:none" onclick="openRosterPicker()">📒 Agregar del roster</button>
     <table id="personas-table">
       <thead>
         <tr>
@@ -636,6 +658,18 @@
 
     <div class="modal-actions" style="margin-top:18px;">
       <button class="btn btn-ghost btn-row" onclick="closeSettings()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD-FROM-ROSTER PICKER MODAL -->
+<div class="overlay" id="roster-picker-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rp-title">
+    <h2 id="rp-title">📒 Agregar del roster</h2>
+    <p class="modal-note">Tocá una persona guardada para agregarla a este asado.</p>
+    <div id="roster-picker-list"></div>
+    <div class="modal-actions" style="margin-top:18px;">
+      <button class="btn btn-ghost btn-row" onclick="closeRosterPicker()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -952,9 +986,51 @@
     recalc();
   }
 
+  // Add-from-roster picker: pick saved people to add to the current asado.
+  function updateAddFromRosterBtn() {
+    const btn = document.getElementById('btn-add-from-roster');
+    if (btn) btn.style.display = (apiEnabled() && roster.length) ? 'block' : 'none';
+  }
+
+  // Roster people not already in this asado (by link).
+  function rosterAvailable() {
+    const used = new Set(state.personas.map(p => p.personId).filter(Boolean));
+    return roster.filter(r => !used.has(r.id));
+  }
+
+  function renderRosterPicker() {
+    const list = document.getElementById('roster-picker-list');
+    const avail = rosterAvailable();
+    if (!avail.length) {
+      list.innerHTML = '<p class="empty">No quedan personas del roster para agregar.</p>';
+      return;
+    }
+    list.innerHTML = avail.map(r => `
+      <button class="rp-item" onclick="addParticipantFromRoster('${r.id}')">
+        <span>${esc(rosterFullName(r)) || '(sin nombre)'}</span>
+        <span class="rp-meat">${r.come_carne ? '🥩 come carne' : 'no come carne'}</span>
+      </button>
+    `).join('');
+  }
+
+  function openRosterPicker() { renderRosterPicker(); document.getElementById('roster-picker-overlay').classList.add('open'); }
+  function closeRosterPicker() { document.getElementById('roster-picker-overlay').classList.remove('open'); }
+
+  function addParticipantFromRoster(rosterId) {
+    const r = roster.find(x => x.id === rosterId);
+    if (!r) return;
+    state.personas.unshift({ id: uid(), personId: r.id, nombre: rosterFullName(r), comeCarne: !!r.come_carne, pagado: false });
+    save();
+    renderPersonas();
+    renderGastos();          // refresh "Pagado por" options
+    recalc();
+    renderRosterPicker();    // drop the just-added person from the picker
+  }
+
   function renderPersonas() {
     const tbody = document.getElementById('personas-body');
     document.getElementById('personas-helper').style.display = apiEnabled() ? 'block' : 'none';
+    updateAddFromRosterBtn();
     if (state.personas.length === 0) {
       tbody.innerHTML = '<tr><td colspan="6" class="empty">No hay personas cargadas</td></tr>';
       return;
@@ -1203,6 +1279,7 @@
     } catch (e) { roster = []; }
     renderRoster();
     updateDatalist();
+    updateAddFromRosterBtn();
   }
 
   // Full display name for a roster person: "Nombre Apellido" (trimmed).
