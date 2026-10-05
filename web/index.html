@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Calculador de Asado 🔥</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🍖</text></svg>">
 <style>
@@ -13,11 +13,13 @@
     --border: #3a3a3a;
     --accent: #e8621a;
     --accent-dim: #c05113;
+    --accent-text: #f2803f;   /* lighter accent for small text: passes 4.5:1 on surfaces */
     --green: #2ecc71;
     --red: #e74c3c;
     --text: #f0f0f0;
     --text-muted: #a8a8a8;
     --radius: 10px;
+    color-scheme: dark;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -53,7 +55,6 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    flex-wrap: wrap;
   }
   .toolbar .tb-left {
     display: flex;
@@ -62,6 +63,8 @@
     flex: 1;
     min-width: 0;
   }
+  .tb-online { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+  .tb-online select { flex: 0 1 auto; min-width: 0; text-overflow: ellipsis; }
   .toolbar .tb-right {
     display: flex;
     align-items: center;
@@ -114,12 +117,6 @@
   .status.error  .dot { background: var(--red); }
   .status.offline .dot { background: var(--text-muted); }
 
-  /* Resumen (always visible) */
-  .resumen-wrap {
-    max-width: 720px;
-    margin: 0 auto 20px;
-  }
-
   /* Tabs */
   .tabs {
     max-width: 720px;
@@ -130,7 +127,12 @@
 
   .tab-btn {
     flex: 1;
-    padding: 13px 16px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 12px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -148,6 +150,19 @@
     color: #fff;
     border-color: var(--accent);
   }
+  .tab-label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .tab-step {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 1px solid currentColor; font-size: 0.72rem; font-weight: 700; flex: none;
+  }
+  /* Live per-step status under each tab label ("4 personas", "$68.000", "falta $X") */
+  .tab-sub {
+    font-size: 0.74rem; font-weight: 500; opacity: 0.85;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .tab-sub:empty { display: none; }
 
   .tab-btn[hidden] { display: none; }
 
@@ -159,39 +174,61 @@
 
   .panel.active { display: block; }
 
-  /* Resumen hero numbers */
+  /* Per-step summary tiles (top of each panel). Flex, not a fixed 3-col grid,
+     so tiles share the width evenly and a hidden tile just disappears. */
   .hero-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
   }
 
   .hero {
+    flex: 1 1 0;
+    min-width: 0;
     background: var(--surface2);
     border-radius: 10px;
-    padding: 16px 12px;
+    padding: 12px 10px;
     text-align: center;
   }
+  .hero[hidden] { display: none; }
+  button.hero {
+    border: 1px solid transparent; color: inherit; font: inherit; cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  button.hero:hover { border-color: var(--accent); }
 
-  .hero-label { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-  .hero-value { font-size: 1.9rem; font-weight: 800; margin-top: 6px; font-variant-numeric: tabular-nums; color: var(--text); }
+  .hero-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .hero-value { font-size: 1.6rem; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; color: var(--text); }
   .hero-value.green { color: var(--green); }
   .hero-value.red { color: var(--red); }
-  .hero-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; }
+  .hero-value.accent { color: var(--accent-text); }
+  .hero-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; }
+  .sobra { font-size: 0.8rem; color: var(--accent-text); margin: -6px 0 14px; text-align: center; }
+  .sobra:empty { display: none; }
 
-  /* Resumen secondary line (expense breakdown) */
-  .resumen-meta {
-    margin-top: 16px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 18px;
-    font-size: 0.86rem;
-    color: var(--text-muted);
+  /* "Siguiente paso" button under the Gente and Gastos cards */
+  .next-btn {
+    display: block;
+    width: 100%;
+    margin-top: 14px;
+    min-height: 48px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--accent);
+    background: rgba(232,98,26,0.08);
+    color: var(--accent-text);
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
   }
-  .resumen-meta b { color: var(--text); font-variant-numeric: tabular-nums; font-weight: 600; }
-  .resumen-meta .sobra { color: var(--accent); }
+  .next-btn:hover { background: rgba(232,98,26,0.16); }
+
+  /* Inline link-style button used inside empty states */
+  .link-btn {
+    background: none; border: none; padding: 0; font: inherit;
+    color: var(--accent-text); text-decoration: underline; cursor: pointer;
+  }
 
   .card {
     background: var(--surface);
@@ -226,6 +263,7 @@
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.03em;
+    white-space: nowrap;
   }
 
   td {
@@ -236,7 +274,7 @@
 
   tr:last-child td { border-bottom: none; }
 
-  input[type="text"] {
+  input[type="text"], input[type="password"], input[type="date"] {
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -308,30 +346,17 @@
     transition: border-color 0.15s, color 0.15s;
   }
 
-  .add-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .add-btn:hover { border-color: var(--accent); color: var(--accent-text); }
 
   .add-btn-top { margin-top: 0; margin-bottom: 14px; }
 
   /* Per-person amount */
-  .amount { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .amount { font-weight: 700; color: var(--accent-text); font-variant-numeric: tabular-nums; }
   .amount.neg { color: var(--green); }   /* a favor: they overpaid, we owe them */
   .amount-muted { color: var(--text-muted); font-size: 0.8rem; }
 
-  /* Inline grams/person control in the Resumen */
-  #kg-input {
-    width: 62px;
-    padding: 2px 6px;
-    font-size: 0.82rem;
-    text-align: right;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    color: var(--text);
-  }
-  #kg-input:focus { border-color: var(--accent); outline: none; }
-
   /* "Pagado por" button (opens a searchable picker) in the Gastos table */
-  .paid-by-btn {
+  .paid-by-btn, .date-btn {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -347,9 +372,32 @@
     cursor: pointer;
     transition: border-color 0.15s;
   }
-  .paid-by-btn:hover { border-color: var(--accent); }
-  .paid-by-btn .pb-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .paid-by-btn .pb-caret { color: var(--text-muted); flex: none; }
+  .paid-by-btn:hover, .date-btn:hover { border-color: var(--accent); }
+  .paid-by-btn .pb-label, .date-btn .pb-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .paid-by-btn .pb-caret, .date-btn .pb-caret { color: var(--text-muted); flex: none; }
+  .date-btn { min-height: 40px; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+  .date-btn .pb-label.empty { color: var(--text-muted); }
+
+  /* Inline calendar for the asado date: dd/mm/aaaa, weeks start on Monday.
+     (A native date input follows the browser's locale, e.g. US mm/dd/yyyy.) */
+  .cal { margin-top: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .cal-title { font-weight: 600; text-transform: capitalize; }
+  .cal-nav {
+    width: 38px; height: 38px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 1.15rem; cursor: pointer;
+  }
+  .cal-nav:hover { border-color: var(--accent); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+  .cal-dow span { font-size: 0.72rem; color: var(--text-muted); padding: 4px 0; }
+  .cal-day {
+    min-height: 38px; border: 1px solid transparent; border-radius: 8px; background: none;
+    color: var(--text); font: inherit; font-size: 0.9rem; cursor: pointer; font-variant-numeric: tabular-nums;
+  }
+  .cal-day:hover { border-color: var(--accent); }
+  .cal-day.today { color: var(--accent-text); font-weight: 700; }
+  .cal-day.sel { background: var(--accent); color: #fff; }
+  .cal-foot { display: flex; justify-content: space-between; margin-top: 6px; }
 
   /* Search input + scrollable list inside picker modals */
   .picker-search { margin-bottom: 12px; }
@@ -396,7 +444,7 @@
     border-radius: 8px;
     border: 1px solid var(--border);
     background: var(--surface2);
-    color: var(--text-muted);
+    color: var(--text);
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
@@ -408,24 +456,12 @@
     border-color: var(--green);
     color: var(--green);
   }
+  /* "Devolver": the host owes this person (they fronted more than their share) */
+  .pay-btn.refund { border-color: rgba(46,204,113,0.5); color: var(--text); }
 
   /* Paid rows recede so unpaid (who still owes) stands out */
   .row-paid input[type="text"] { color: var(--text-muted); text-decoration: line-through; }
   .row-paid .amount { color: var(--text-muted); text-decoration: line-through; font-weight: 600; }
-
-  .reset-btn {
-    margin-top: 20px;
-    float: right;
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    border-radius: 6px;
-    padding: 8px 14px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s;
-  }
-  .reset-btn:hover { border-color: var(--red); color: var(--red); }
 
   .empty { color: var(--text-muted); font-size: 0.85rem; padding: 12px 0; text-align: center; }
 
@@ -486,6 +522,9 @@
   .btn-ghost { background: none; color: var(--text-muted); }
   .btn-danger { color: var(--red); }
   .btn-danger:hover { border-color: var(--red); }
+  .btn-danger-solid { background: var(--red); border-color: var(--red); color: #fff; }
+  .btn-danger-solid:hover { filter: brightness(1.08); }
+  .confirm-msg { font-size: 1rem; line-height: 1.45; }
   .btn-row { margin-left: auto; }
 
   .modal-note { font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px; }
@@ -498,6 +537,11 @@
     border-top: 1px solid var(--border);
   }
   .modal-section h3 { font-size: 0.9rem; margin-bottom: 8px; }
+  /* Collapsible "Conexión" section in Ajustes (rarely needed: the served app auto-connects) */
+  details.modal-section > summary {
+    cursor: pointer; font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; list-style-position: inside;
+  }
+  details.modal-section:not([open]) > summary { margin-bottom: 0; }
 
   /* ---------------------------------------------------------------------
      Mobile cards. On phones the dense desktop tables are replaced by
@@ -519,10 +563,24 @@
     margin-bottom: 7px;
   }
   .mcard-main { flex: 1; min-width: 0; }
-  .mcard-title { font-size: 0.95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mcard-sub { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
-  .mcard-amt { font-size: 1rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; flex: none; }
+  .mcard-title { display: block; font-size: 0.95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mcard-sub { display: block; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .mcard-amt { font-size: 1rem; font-weight: 700; color: var(--accent-text); font-variant-numeric: tabular-nums; flex: none; text-align: right; }
   .mcard-amt.neg { color: var(--green); }
+  /* Small caption under a Cobrar amount: "te debe" / "le devolvés" */
+  .amt-cap { display: block; font-size: 0.68rem; font-weight: 500; color: var(--text-muted); margin-top: 1px; }
+  /* Cobrar notes may run long ("puso $45.000 · le toca $20.750"): wrap, don't truncate */
+  .mcard-sub.wrap { white-space: normal; }
+  /* Whole card is the tap target for editing (✎ is just the visual hint) */
+  button.mcard {
+    width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  button.mcard:hover { border-color: var(--accent); }
+  .mcard-tap {
+    flex: 1; min-width: 0; text-align: left; background: none; border: none;
+    padding: 4px 0; font: inherit; color: inherit; cursor: pointer;
+  }
   .mcard-meat { flex: none; font-size: 1rem; line-height: 1; }
   .mcard-edit {
     flex: none;
@@ -531,10 +589,10 @@
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 8px; color: var(--text-muted); font-size: 1.05rem; cursor: pointer;
   }
-  .mcard-edit:hover { border-color: var(--accent); color: var(--accent); }
+  .mcard-edit:hover, button.mcard:hover .mcard-edit { border-color: var(--accent); color: var(--accent-text); }
   .mcard.row-paid { opacity: 0.72; }
   .mcard.row-paid .mcard-title, .mcard.row-paid .mcard-amt { color: var(--text-muted); text-decoration: line-through; }
-  .mcard-link { flex: none; color: var(--accent); font-size: 0.85rem; }
+  .mcard-link { flex: none; color: var(--accent-text); font-size: 0.85rem; }
 
   /* Toggle pill (carne / come carne / pagó) — a big, self-labeling tap
      target that replaces the tiny checkbox inside the edit modals. */
@@ -547,7 +605,7 @@
     font-size: 0.95rem; font-weight: 600; cursor: pointer;
     transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
-  .pill.on { background: rgba(232,98,26,0.16); border-color: var(--accent); color: var(--accent); }
+  .pill.on { background: rgba(232,98,26,0.16); border-color: var(--accent); color: var(--accent-text); }
   .pill.on.pill-green { background: rgba(46,204,113,0.16); border-color: var(--green); color: var(--green); }
 
   /* Compact, auto-width pill for inline use in the desktop Gente table. */
@@ -566,18 +624,43 @@
   /* Prevent iOS auto-zoom on focus; swap tables for cards on phones */
   @media (max-width: 700px) {
     input[type="text"], input[type="number"], input[type="date"], input[type="password"] { font-size: 16px; }
-    .hero-value { font-size: 1.5rem; }
     td { padding: 10px 8px; }
+
+    /* Room for the fixed bottom step bar (+ the iPhone home indicator). */
+    body { padding: 14px 16px calc(96px + env(safe-area-inset-bottom)); }
+
+    /* The asado name lives in the toolbar; keep the brand line small. */
+    header { margin-bottom: 14px; }
+    header h1 { font-size: 1.3rem; }
+    header p { display: none; }
+
+    .card { padding: 14px; }
+    .hero-grid { gap: 8px; }
+    .hero { padding: 10px 6px; }
+    .hero-label { font-size: 0.64rem; letter-spacing: 0.02em; }
+    .hero-value { font-size: 1.15rem; }
+    .hero-sub { font-size: 0.68rem; }
+
+    /* Save status: just the dot when all is well; text only while saving / on error. */
+    .status.saved .status-text { display: none; }
+
+    /* Steps become a thumb-reachable bottom bar that's always on screen. */
+    .tabs {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+      max-width: none; margin: 0;
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+      background: var(--bg); border-top: 1px solid var(--border);
+      gap: 6px;
+    }
+    .tab-btn { padding: 7px 4px; font-size: 0.86rem; }
+    .tab-step { width: 18px; height: 18px; font-size: 0.66rem; }
+    .pill-sm { min-height: 40px; }
 
     /* Hide the dense desktop tables + their inline add buttons; show the
        compact card list and its modal-based add button instead. */
     .only-desktop { display: none !important; }
     .cards { display: block; }
     .mobile-add { display: block; }
-
-    /* Compact the tab bar so 4 tabs (with Roster, online) fit a phone. */
-    .tabs { gap: 6px; }
-    .tab-btn { padding: 11px 6px; font-size: 0.9rem; }
   }
 </style>
 </head>
@@ -587,11 +670,10 @@
 <div class="toolbar">
   <div class="tb-left">
     <!-- Online: asado selector -->
-    <span id="tb-online" style="display:none; align-items:center; gap:8px;">
+    <span id="tb-online" class="tb-online" style="display:none;">
       <select id="asado-select" aria-label="Elegir asado" onchange="onSelectAsado(this.value)"></select>
       <button class="icon-btn" title="Nuevo asado" aria-label="Nuevo asado" onclick="openAsadoModal('new')">＋</button>
-      <button class="icon-btn" title="Renombrar asado" aria-label="Renombrar asado" onclick="openAsadoModal('rename')">✎</button>
-      <button class="icon-btn" title="Borrar asado" aria-label="Borrar asado" onclick="deleteCurrentAsado()">🗑</button>
+      <button class="icon-btn" title="Editar asado (nombre, fecha, borrar)" aria-label="Editar asado" onclick="openAsadoModal('edit')">✎</button>
     </span>
     <!-- Offline: pill -->
     <span id="tb-offline" class="status offline">
@@ -600,87 +682,51 @@
   </div>
   <div class="tb-right">
     <span id="save-status" class="status" style="display:none;"><span class="dot"></span> <span class="status-text"></span></span>
-    <button class="icon-btn" title="Configuración / conexión" aria-label="Configuración" onclick="openSettings()">⚙️</button>
+    <button class="icon-btn" title="Ajustes" aria-label="Ajustes" onclick="openSettings()">⚙️</button>
   </div>
 </div>
 
 <header>
   <h1>🔥 Calculador de Asado</h1>
-  <p>Ingresá los gastos y las personas para calcular cuánto paga cada uno</p>
+  <p>Sumá la gente, cargá los gastos y cobrale a cada uno lo justo</p>
 </header>
 
-<!-- RESUMEN (siempre visible) -->
-<div class="resumen-wrap">
-  <div class="card">
-    <div class="card-title"><span>📊</span> Resumen</div>
-    <div class="hero-grid">
-      <div class="hero">
-        <div class="hero-label">Total a Cobrar</div>
-        <div class="hero-value" id="stat-acobrar">$0</div>
-      </div>
-      <div class="hero">
-        <div class="hero-label">Cobrado</div>
-        <div class="hero-value green" id="stat-cobrado">$0</div>
-      </div>
-      <div class="hero">
-        <div class="hero-label">Falta</div>
-        <div class="hero-value red" id="stat-falta">$0</div>
-        <div class="hero-sub" id="stat-falta-sub"></div>
-      </div>
-    </div>
+<!-- STEPS: the flow is Gente → Gastos → Cobrar. On phones this is a fixed bottom bar. -->
+<nav class="tabs" aria-label="Pasos">
+  <button class="tab-btn" data-tab="gente" onclick="showTab('gente')">
+    <span class="tab-label"><span class="tab-step">1</span>Gente</span>
+    <span class="tab-sub" id="tabsub-gente"></span>
+  </button>
+  <button class="tab-btn" data-tab="gastos" onclick="showTab('gastos')">
+    <span class="tab-label"><span class="tab-step">2</span>Gastos</span>
+    <span class="tab-sub" id="tabsub-gastos"></span>
+  </button>
+  <button class="tab-btn" data-tab="cobrar" onclick="showTab('cobrar')">
+    <span class="tab-label"><span class="tab-step">3</span>Cobrar</span>
+    <span class="tab-sub" id="tabsub-cobrar"></span>
+  </button>
+</nav>
 
-    <div class="resumen-meta">
-      <span>Gastos <b id="stat-total">$0</b></span>
-      <span>Carne <b id="stat-carne">$0</b></span>
-      <span>Sin carne <b id="stat-sin-carne">$0</b></span>
-      <span><b id="stat-personas">0</b> personas · <b id="stat-comen-carne">0</b> comen carne</span>
-      <span>🥩 Comprar <b id="stat-kg">0 kg</b> <span id="stat-kg-sub" class="amount-muted"></span></span>
-      <span class="sobra" id="stat-sobra"></span>
-    </div>
-  </div>
-</div>
-
-<div class="tabs">
-  <button class="tab-btn active" data-tab="gastos" onclick="showTab('gastos')">💸 Gastos</button>
-  <button class="tab-btn" data-tab="gente" onclick="showTab('gente')">👥 Gente</button>
-  <button class="tab-btn" data-tab="cobrar" onclick="showTab('cobrar')">💵 Cobrar</button>
-</div>
-
-<!-- TAB: GASTOS -->
-<div class="panel active" data-tab="gastos">
-  <div class="card">
-    <div class="card-title"><span>💸</span> Gastos</div>
-    <p class="helper">Marcá 🥩 en los gastos de carne: se reparten solo entre los que comen carne. El resto se divide entre todos.
-      Asigná un gasto a quien lo pagó para descontárselo de lo que te debe.</p>
-
-    <!-- Mobile: compact cards, edit in a modal (no accidental edits) -->
-    <button class="add-btn add-btn-top mobile-add" onclick="openGastoModal('new')">+ Agregar gasto</button>
-    <div class="cards" id="gastos-cards"></div>
-
-    <!-- Desktop: inline-editable table -->
-    <div class="only-desktop">
-      <button class="add-btn add-btn-top" onclick="addGasto()">+ Agregar gasto</button>
-      <table id="gastos-table">
-        <thead>
-          <tr>
-            <th>Descripción</th>
-            <th style="text-align:right">Precio ($)</th>
-            <th class="col-chk" title="¿Es un gasto de carne?">🥩 Carne</th>
-            <th title="¿Quién lo pagó? Se le descuenta de lo que debe">Pagado por</th>
-            <th class="col-del"></th>
-          </tr>
-        </thead>
-        <tbody id="gastos-body"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- TAB: GENTE (quiénes van — define cuánta carne comprar) -->
+<!-- STEP 1: GENTE (quiénes van — define cuánta carne comprar) -->
 <div class="panel" data-tab="gente">
   <div class="card">
-    <div class="card-title"><span>👥</span> Gente</div>
-    <p class="helper">Quiénes van al asado. Marcá quién come carne para saber cuánta comprar.</p>
+    <div class="card-title"><span>👥</span> ¿Quiénes vienen?</div>
+    <div class="hero-grid">
+      <div class="hero">
+        <div class="hero-label">Personas</div>
+        <div class="hero-value" id="stat-personas">0</div>
+      </div>
+      <div class="hero">
+        <div class="hero-label">Comen carne</div>
+        <div class="hero-value" id="stat-comen-carne">0</div>
+      </div>
+      <button type="button" class="hero" onclick="openSettings('kg')" title="Cambiar gramos por persona">
+        <div class="hero-label">🥩 Comprar</div>
+        <div class="hero-value accent" id="stat-kg">0 kg</div>
+        <div class="hero-sub" id="stat-kg-sub"></div>
+      </button>
+    </div>
+    <p class="helper">Marcá quién come carne: define cuánta comprar y entre quiénes se divide.</p>
 
     <!-- Mobile -->
     <button class="add-btn add-btn-top mobile-add" onclick="onAddPersona()">+ Agregar persona</button>
@@ -701,16 +747,79 @@
         <tbody id="gente-body"></tbody>
       </table>
     </div>
-
-    <button class="reset-btn" onclick="resetAll()">🗑 Borrar todo</button>
   </div>
+  <button class="next-btn" onclick="showTab('gastos')">Siguiente: cargar gastos →</button>
 </div>
 
-<!-- TAB: COBRAR (settlement — read-only amounts + pay toggle) -->
+<!-- STEP 2: GASTOS -->
+<div class="panel" data-tab="gastos">
+  <div class="card">
+    <div class="card-title"><span>💸</span> ¿Qué se compró?</div>
+    <div class="hero-grid">
+      <div class="hero">
+        <div class="hero-label">Total</div>
+        <div class="hero-value" id="stat-total">$0</div>
+      </div>
+      <div class="hero">
+        <div class="hero-label">🥩 Carne</div>
+        <div class="hero-value" id="stat-carne">$0</div>
+        <div class="hero-sub" id="stat-sin-carne"></div>
+      </div>
+      <div class="hero">
+        <div class="hero-label">Le toca a c/u</div>
+        <div class="hero-value accent" id="stat-share">—</div>
+        <div class="hero-sub" id="stat-share-sub"></div>
+      </div>
+    </div>
+    <p class="helper">Marcá 🥩 los gastos de carne: los pagan solo los que comen carne. Si alguien puso la plata de un gasto, elegilo en “Pagado por”.</p>
+
+    <!-- Mobile: compact cards, tap one to edit it in a modal (no accidental edits) -->
+    <button class="add-btn add-btn-top mobile-add" onclick="openGastoModal('new')">+ Agregar gasto</button>
+    <div class="cards" id="gastos-cards"></div>
+
+    <!-- Desktop: inline-editable table -->
+    <div class="only-desktop">
+      <button class="add-btn add-btn-top" onclick="addGasto()">+ Agregar gasto</button>
+      <table id="gastos-table">
+        <thead>
+          <tr>
+            <th>Descripción</th>
+            <th style="text-align:right">Precio ($)</th>
+            <th class="col-chk" title="¿Es un gasto de carne?">🥩 Carne</th>
+            <th title="¿Quién lo pagó? Se le descuenta de lo que debe">Pagado por</th>
+            <th class="col-del"></th>
+          </tr>
+        </thead>
+        <tbody id="gastos-body"></tbody>
+      </table>
+    </div>
+  </div>
+  <button class="next-btn" onclick="showTab('cobrar')">Siguiente: cobrar →</button>
+</div>
+
+<!-- STEP 3: COBRAR (settlement — read-only amounts + pay toggle) -->
 <div class="panel" data-tab="cobrar">
   <div class="card">
     <div class="card-title"><span>💵</span> Cobrar</div>
-    <p class="helper">Lo que te debe cada uno. Tocá “Cobrar” cuando te paguen. Editá nombres o gastos en sus pestañas.</p>
+    <div class="hero-grid">
+      <div class="hero">
+        <div class="hero-label">Falta cobrar</div>
+        <div class="hero-value red" id="stat-falta">$0</div>
+        <div class="hero-sub" id="stat-falta-sub"></div>
+      </div>
+      <div class="hero">
+        <div class="hero-label">Cobrado</div>
+        <div class="hero-value green" id="stat-cobrado">$0</div>
+        <div class="hero-sub" id="stat-cobrado-sub"></div>
+      </div>
+      <div class="hero" id="hero-devolver" hidden>
+        <div class="hero-label">A devolver</div>
+        <div class="hero-value accent" id="stat-devolver">$0</div>
+        <div class="hero-sub" id="stat-devolver-sub"></div>
+      </div>
+    </div>
+    <p class="sobra" id="stat-sobra"></p>
+    <p class="helper">Tocá “Cobrar” cuando alguien te pague. Si alguien puso más plata de la que le toca, aparece en verde para devolverle.</p>
 
     <!-- Mobile -->
     <div class="cards" id="cobrar-cards"></div>
@@ -721,8 +830,8 @@
         <thead>
           <tr>
             <th>Nombre</th>
-            <th style="text-align:right">A Pagar</th>
-            <th class="col-pay" title="¿Pagó?">✓ Pagó</th>
+            <th style="text-align:right">Saldo</th>
+            <th class="col-pay" title="¿Ya está saldado?">Estado</th>
           </tr>
         </thead>
         <tbody id="cobrar-body"></tbody>
@@ -738,36 +847,17 @@
      auto-connects (no setup). Absent/404 when opened as a local file → offline. -->
 <script src="config.js"></script>
 
-<!-- SETTINGS MODAL -->
+<!-- SETTINGS MODAL (everyday prefs first; connection is collapsed — the served app auto-connects) -->
 <div class="overlay" id="settings-overlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-    <h2 id="settings-title">⚙️ Conexión</h2>
-    <p class="modal-note">Conectá el servidor para guardar los asados fuera de este navegador y reusar el roster.
-      Dejá los campos vacíos para seguir en <b>modo offline</b> (solo este navegador).</p>
-    <div class="field">
-      <label for="cfg-url">URL del servidor (API base)</label>
-      <input type="text" id="cfg-url" placeholder="http://10.0.0.20:8787" autocomplete="off" spellcheck="false">
-    </div>
-    <div class="field">
-      <label for="cfg-token">Token (API_TOKEN)</label>
-      <input type="password" id="cfg-token" placeholder="bearer token" autocomplete="off" spellcheck="false">
-    </div>
-    <div class="modal-actions">
-      <button class="btn" onclick="testConnection()">Probar conexión</button>
-      <button class="btn btn-ghost" onclick="goOffline()">Modo offline</button>
-      <button class="btn btn-primary btn-row" onclick="saveSettings()">Guardar</button>
-    </div>
-    <div class="test-result" id="cfg-test"></div>
+    <h2 id="settings-title">⚙️ Ajustes</h2>
 
-    <div class="modal-section">
-      <h3>🥩 Carne por persona</h3>
-      <p class="modal-note">Cuántos gramos comprar por cada persona que come carne. Se usa para el “Comprar X kg” del resumen.</p>
-      <div class="field">
-        <label for="kg-input">Gramos por persona</label>
-        <input type="number" id="kg-input" min="0" step="50" value="400" aria-label="Gramos de carne por persona"
-          onchange="onKgChange(this.value)">
-      </div>
+    <div class="field">
+      <label for="kg-input">🥩 Gramos de carne por persona</label>
+      <input type="number" id="kg-input" min="0" step="50" value="400" inputmode="numeric"
+        onchange="onKgChange(this.value)">
     </div>
+    <p class="modal-note">Se usa para calcular cuántos kilos comprar (paso 1).</p>
 
     <div class="modal-section" id="roster-section" style="display:none;">
       <h3>📒 Roster de personas</h3>
@@ -778,7 +868,7 @@
           <tr>
             <th>Nombre</th>
             <th>Apellido</th>
-            <th class="gente-carne" title="¿Come carne?">🥩 Carne</th>
+            <th class="col-chk" title="¿Come carne?">🥩</th>
             <th class="col-del"></th>
           </tr>
         </thead>
@@ -793,8 +883,34 @@
       <div class="test-result" id="migrate-result"></div>
     </div>
 
+    <div class="modal-section">
+      <h3>🧹 Empezar de cero</h3>
+      <p class="modal-note">Borra todos los gastos y la gente de este asado.</p>
+      <button class="btn btn-danger" onclick="resetAll()">🗑 Vaciar este asado</button>
+    </div>
+
+    <details class="modal-section" id="conn-details">
+      <summary>🔌 Conexión al servidor</summary>
+      <p class="modal-note">Conectá el servidor para guardar los asados fuera de este navegador y reusar el roster.
+        Dejá los campos vacíos para seguir en <b>modo offline</b> (solo este navegador).</p>
+      <div class="field">
+        <label for="cfg-url">URL del servidor (API base)</label>
+        <input type="text" id="cfg-url" placeholder="http://10.0.0.20:8787" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="cfg-token">Token (API_TOKEN)</label>
+        <input type="password" id="cfg-token" placeholder="bearer token" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="testConnection()">Probar conexión</button>
+        <button class="btn btn-ghost" onclick="goOffline()">Modo offline</button>
+        <button class="btn btn-primary btn-row" onclick="saveSettings()">Guardar</button>
+      </div>
+      <div class="test-result" id="cfg-test"></div>
+    </details>
+
     <div class="modal-actions" style="margin-top:18px;">
-      <button class="btn btn-ghost btn-row" onclick="closeSettings()">Cerrar</button>
+      <button class="btn btn-primary btn-row" onclick="closeSettings()">Listo</button>
     </div>
   </div>
 </div>
@@ -827,23 +943,40 @@
   </div>
 </div>
 
-<!-- ASADO (new / rename) MODAL -->
+<!-- ASADO (new / edit) MODAL -->
 <div class="overlay" id="asado-overlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="asado-modal-title">
     <h2 id="asado-modal-title">Nuevo asado</h2>
     <div class="field">
       <label for="asado-name">Nombre</label>
-      <input type="text" id="asado-name" placeholder="Asado del domingo" autocomplete="off">
+      <input type="text" id="asado-name" placeholder="Asado del domingo" autocomplete="off"
+        onkeydown="if (event.key === 'Enter') { event.preventDefault(); submitAsadoModal(); }">
     </div>
     <div class="field">
-      <label for="asado-date">Fecha (opcional)</label>
-      <input type="date" id="asado-date">
+      <label for="asado-date-btn">Fecha (opcional)</label>
+      <button type="button" class="date-btn" id="asado-date-btn" aria-expanded="false" aria-controls="cal" onclick="toggleCal()">
+        <span class="pb-label" id="asado-date-label">Sin fecha</span><span class="pb-caret">📅</span>
+      </button>
+      <div class="cal" id="cal" hidden></div>
     </div>
     <div class="modal-actions">
+      <button class="btn btn-danger" id="asado-delete-btn" onclick="deleteCurrentAsado()">🗑 Borrar asado</button>
       <button class="btn btn-ghost" onclick="closeAsadoModal()">Cancelar</button>
       <button class="btn btn-primary btn-row" id="asado-save-btn" onclick="submitAsadoModal()">Guardar</button>
     </div>
     <div class="test-result" id="asado-modal-result"></div>
+  </div>
+</div>
+
+<!-- CONFIRM dialog: in-page replacement for the browser's confirm()/alert(),
+     styled like the other modals and stacked above them. -->
+<div class="overlay" id="confirm-overlay" style="z-index:70">
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg">
+    <p class="confirm-msg" id="confirm-msg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="confirm-cancel" onclick="closeConfirm(false)">Cancelar</button>
+      <button class="btn btn-danger-solid btn-row" id="confirm-ok" onclick="closeConfirm(true)">Borrar</button>
+    </div>
   </div>
 </div>
 
@@ -853,11 +986,13 @@
     <h2 id="gasto-modal-title">Editar gasto</h2>
     <div class="field">
       <label for="gm-desc">Descripción</label>
-      <input type="text" id="gm-desc" placeholder="Carbón, carne, hielo…" autocomplete="off">
+      <input type="text" id="gm-desc" placeholder="Carbón, carne, hielo…" autocomplete="off"
+        onkeydown="if (event.key === 'Enter') { event.preventDefault(); document.getElementById('gm-price').focus(); }">
     </div>
     <div class="field">
       <label for="gm-price">Precio ($)</label>
-      <input type="number" id="gm-price" placeholder="0" min="0" step="0.01">
+      <input type="number" id="gm-price" placeholder="0" min="0" step="0.01" inputmode="decimal"
+        onkeydown="if (event.key === 'Enter') { event.preventDefault(); gmSave(); }">
     </div>
     <div class="field">
       <button type="button" class="pill" id="gm-carne" aria-pressed="false" onclick="gmToggleCarne()">🥩 Gasto de carne</button>
@@ -869,9 +1004,11 @@
       </button>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-danger" onclick="gmDelete()">🗑 Borrar</button>
+      <button class="btn btn-danger" id="gm-delete" onclick="gmDelete()">🗑 Borrar</button>
       <button class="btn btn-ghost" onclick="closeGastoModal()">Cancelar</button>
-      <button class="btn btn-primary btn-row" onclick="gmSave()">Guardar</button>
+      <span style="flex:1"></span>
+      <button class="btn" id="gm-another" onclick="gmSave(true)" title="Guardar y cargar otro gasto">+ Otro</button>
+      <button class="btn btn-primary" onclick="gmSave()">Guardar</button>
     </div>
   </div>
 </div>
@@ -882,7 +1019,8 @@
     <h2 id="persona-modal-title">Editar persona</h2>
     <div class="field">
       <label for="pm-name">Nombre</label>
-      <input type="text" id="pm-name" placeholder="Nombre" autocomplete="off">
+      <input type="text" id="pm-name" placeholder="Nombre" autocomplete="off"
+        onkeydown="if (event.key === 'Enter') { event.preventDefault(); pmSave(); }">
     </div>
     <div class="field">
       <button type="button" class="pill" id="pm-carne" aria-pressed="true" onclick="pmToggleCarne()">🥩 Come carne</button>
@@ -891,7 +1029,7 @@
       <button type="button" class="btn" id="pm-roster-btn" onclick="pmSaveToRoster()">📒 Guardar en el roster</button>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-danger" onclick="pmDelete()">🗑 Borrar</button>
+      <button class="btn btn-danger" id="pm-delete" onclick="pmDelete()">🗑 Borrar</button>
       <button class="btn btn-ghost" onclick="closePersonaModal()">Cancelar</button>
       <button class="btn btn-primary btn-row" onclick="pmSave()">Guardar</button>
     </div>
@@ -966,7 +1104,14 @@
         comeCarne: !!p.come_carne, pagado: !!p.pagado
       }))
     };
-    currentMeta = { name: a.name || '', event_date: a.event_date || null };
+    currentMeta = { name: a.name || '', event_date: isoDay(a.event_date) };
+  }
+
+  // The API serializes the pg `date` column as a timestamp ("2026-10-04T00:00:00.000Z");
+  // keep just the day so <input type="date"> can show it and a rename doesn't wipe it.
+  function isoDay(v) {
+    const m = /^\d{4}-\d{2}-\d{2}/.exec(v || '');
+    return m ? m[0] : null;
   }
 
   function toApiAsado() {
@@ -1091,10 +1236,10 @@
   }
 
   // Inline (desktop) deletes confirm first — the ✕ sits near other controls.
-  function askDelGasto(id) {
+  async function askDelGasto(id) {
     const g = state.gastos.find(x => x.id === id);
     const label = g && g.nombre ? `"${g.nombre}"` : 'este gasto';
-    if (confirm('¿Borrar ' + label + '?')) delGasto(id);
+    if (await askConfirm('¿Borrar ' + label + '?')) delGasto(id);
   }
 
   function onGastoChange(id, field, value) {
@@ -1109,8 +1254,9 @@
     const tbody = document.getElementById('gastos-body');
     const cards = document.getElementById('gastos-cards');
     if (state.gastos.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty">No hay gastos cargados</td></tr>';
-      cards.innerHTML = '<p class="empty">No hay gastos cargados</p>';
+      const msg = 'Todavía no hay gastos. Cargá lo que se compró: carne, carbón, bebidas…';
+      tbody.innerHTML = `<tr><td colspan="5" class="empty">${msg}</td></tr>`;
+      cards.innerHTML = `<p class="empty">${msg}</p>`;
       return;
     }
     // Desktop: inline-editable table
@@ -1130,27 +1276,27 @@
         <td class="col-del"><button class="del-btn" aria-label="Borrar gasto" onclick="askDelGasto('${g.id}')">✕</button></td>
       </tr>
     `).join('');
-    // Mobile: compact read-only cards (edit via the ✎ modal)
+    // Mobile: compact read-only cards; the whole card opens the edit modal.
     cards.innerHTML = state.gastos.map(g => `
-      <div class="mcard">
-        <div class="mcard-main">
-          <div class="mcard-title">${esc(g.nombre) || '<span style="color:var(--text-muted)">Sin descripción</span>'}</div>
-          ${g.paidBy ? `<div class="mcard-sub">Pagó ${payerLabelText(g)}</div>` : ''}
-        </div>
+      <button type="button" class="mcard" onclick="openGastoModal('${g.id}')">
+        <span class="mcard-main">
+          <span class="mcard-title">${esc(g.nombre) || '<span style="color:var(--text-muted)">Sin descripción</span>'}</span>
+          ${g.paidBy ? `<span class="mcard-sub">Pagó ${payerLabelText(g)}</span>` : ''}
+        </span>
         ${g.esCarne ? '<span class="mcard-meat" title="Gasto de carne">🥩</span>' : ''}
-        <div class="mcard-amt">${fmt(parseFloat(g.precio) || 0)}</div>
-        <button class="mcard-edit" aria-label="Editar gasto" onclick="openGastoModal('${g.id}')">✎</button>
-      </div>
+        <span class="mcard-amt">${fmt(parseFloat(g.precio) || 0)}</span>
+        <span class="mcard-edit" aria-hidden="true">✎</span>
+      </button>
     `).join('');
   }
 
   // ---------------------------------------------------------------------------
   // Personas (participants)
   // ---------------------------------------------------------------------------
-  // Re-render both participant views (Gente = setup, Cobrar = settlement).
+  // Re-render the participant setup list. (Cobrar is rebuilt by recalc(),
+  // which every caller runs right after.)
   function renderParticipants() {
     renderGente();
-    renderCobrar();
   }
 
   function addPersona(nombre = '', comeCarne = true, pagado = false) {
@@ -1189,9 +1335,8 @@
     // Editing the name by hand unlinks from the roster unless it still matches.
     if (field === 'nombre') p.personId = null;
     save();
-    recalc();
+    recalc();         // also refreshes Cobrar (names / shares)
     renderGastos();   // payer labels / meta may have changed
-    renderCobrar();   // names / shares shown here depend on this
   }
 
   // Desktop Gente come-carne pill toggle (re-render to flip the pill state).
@@ -1201,15 +1346,14 @@
     p.comeCarne = !p.comeCarne;
     save();
     renderGente();
-    renderCobrar();
     recalc();
   }
 
   // Inline (desktop) delete confirms first — the ✕ sits near other controls.
-  function askDelPersona(id) {
+  async function askDelPersona(id) {
     const p = state.personas.find(x => x.id === id);
     const label = p && p.nombre ? `"${p.nombre}"` : 'esta persona';
-    if (confirm('¿Borrar ' + label + '?')) delPersona(id);
+    if (await askConfirm('¿Borrar ' + label + '?')) delPersona(id);
   }
 
   // On blur/change of the name: try to link to a roster person by exact name.
@@ -1239,7 +1383,7 @@
     const p = state.personas.find(x => x.id === id);
     if (!p) return;
     const full = (p.nombre || '').trim();
-    if (!full) { alert('Poné un nombre antes de guardarlo en el roster.'); return; }
+    if (!full) { showNotice('Poné un nombre antes de guardarlo en el roster.'); return; }
     // If the roster already has this full name, link to it instead of duplicating.
     let match = roster.find(r => rosterFullName(r).toLowerCase() === full.toLowerCase());
     if (match) {
@@ -1387,8 +1531,11 @@
     const tbody = document.getElementById('gente-body');
     const cards = document.getElementById('gente-cards');
     if (state.personas.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty">No hay personas cargadas</td></tr>';
-      cards.innerHTML = '<p class="empty">No hay personas cargadas</p>';
+      const msg = apiEnabled()
+        ? 'Todavía no hay nadie. Tocá “+ Agregar persona” para elegir del roster o sumar a alguien nuevo.'
+        : 'Todavía no hay nadie. Tocá “+ Agregar persona” para empezar.';
+      tbody.innerHTML = `<tr><td colspan="4" class="empty">${msg}</td></tr>`;
+      cards.innerHTML = `<p class="empty">${msg}</p>`;
       return;
     }
     const listAttr = apiEnabled() ? 'list="roster-datalist"' : '';
@@ -1413,9 +1560,9 @@
     // needed for the common quick change); name edits via the ✎ modal.
     cards.innerHTML = state.personas.map(p => `
       <div class="mcard">
-        <div class="mcard-main">
-          <div class="mcard-title">${esc(p.nombre) || '<span style="color:var(--text-muted)">Sin nombre</span>'}${p.personId ? ' <span class="mcard-link" title="En el roster">●</span>' : ''}</div>
-        </div>
+        <button type="button" class="mcard-tap" onclick="openPersonaModal('${p.id}')">
+          <span class="mcard-title">${esc(p.nombre) || '<span style="color:var(--text-muted)">Sin nombre</span>'}${p.personId ? ' <span class="mcard-link" title="En el roster">●</span>' : ''}</span>
+        </button>
         <button type="button" class="pill pill-sm carne-toggle ${p.comeCarne ? 'on' : ''}" aria-pressed="${p.comeCarne}"
           aria-label="${p.comeCarne ? 'Come carne (tocá para cambiar)' : 'No come carne (tocá para cambiar)'}"
           onclick="togglePersonaCarne('${p.id}')">${p.comeCarne ? '🥩 Carne' : 'Sin carne'}</button>
@@ -1424,40 +1571,65 @@
     `).join('');
   }
 
-  // COBRAR tab — read-only amounts + a pay toggle. Amounts are filled by recalc().
-  function renderCobrar() {
+  // COBRAR tab — read-only balances + a settle toggle. Rebuilt by recalc().
+  // A positive balance means they owe you ("Cobrar"); a negative one means they
+  // fronted more than their share and you owe them ("Devolver").
+  function renderCobrar(split) {
+    const sp = split || computeSplit();
     const tbody = document.getElementById('cobrar-body');
     const cards = document.getElementById('cobrar-cards');
-    if (state.personas.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" class="empty">Agregá gente para calcular cuánto paga cada uno</td></tr>';
-      cards.innerHTML = '<p class="empty">Agregá gente para calcular cuánto paga cada uno</p>';
+    if (state.personas.length === 0 || state.gastos.length === 0) {
+      const msg = state.personas.length === 0
+        ? 'Primero sumá la gente en el <button class="link-btn" onclick="showTab(\'gente\')">paso 1</button>.'
+        : 'Cargá los gastos en el <button class="link-btn" onclick="showTab(\'gastos\')">paso 2</button> para ver cuánto paga cada uno.';
+      tbody.innerHTML = `<tr><td colspan="3" class="empty">${msg}</td></tr>`;
+      cards.innerHTML = `<p class="empty">${msg}</p>`;
       return;
     }
-    const payBtn = (p) => `<button class="pay-btn ${p.pagado ? 'paid' : ''}" aria-pressed="${p.pagado}"
-      aria-label="${p.pagado ? 'Pagó (tocá para desmarcar)' : 'Marcar como pagado'}"
-      onclick="setPagado('${p.id}', ${!p.pagado})">${p.pagado ? '✓ Pagó' : 'Cobrar'}</button>`;
+    const view = (p) => {
+      const { share, paid, neto } = sp.people[p.id];
+      const refund = neto < -0.005;
+      const even = Math.abs(neto) <= 0.005;
+      const cap = even ? 'a mano'
+        : refund ? (p.pagado ? 'devuelto' : 'le devolvés')
+        : (p.pagado ? 'cobrado' : 'te debe');
+      return {
+        refund,
+        amount: fmt(Math.abs(neto)),
+        cap,
+        note: paid > 0 ? `puso ${fmt(paid)} · le toca ${fmt(share)}` : '',
+        btn: `<button class="pay-btn ${p.pagado ? 'paid' : (refund ? 'refund' : '')}" aria-pressed="${p.pagado}"
+          aria-label="${p.pagado ? 'Saldado (tocá para desmarcar)' : (refund ? 'Marcar como devuelto' : 'Marcar como cobrado')}"
+          onclick="setPagado('${p.id}', ${!p.pagado})">${p.pagado ? (refund ? '✓ Devuelto' : '✓ Pagó') : (refund ? 'Devolver' : 'Cobrar')}</button>`
+      };
+    };
     // Desktop table
-    tbody.innerHTML = state.personas.map(p => `
+    tbody.innerHTML = state.personas.map(p => {
+      const v = view(p);
+      return `
       <tr class="${p.pagado ? 'row-paid' : ''}">
-        <td>${esc(p.nombre) || '(sin nombre)'}</td>
+        <td>${esc(p.nombre) || '(sin nombre)'}
+          ${v.note ? `<span class="amount-muted" style="display:block">${v.note}</span>` : ''}</td>
         <td style="text-align:right">
-          <span class="amount cobrar-amount" data-pid="${p.id}"></span>
-          <span class="amount-muted cobrar-note" data-pid="${p.id}" style="display:block"></span>
+          <span class="amount ${v.refund ? 'neg' : ''}">${v.amount}</span>
+          <span class="amt-cap">${v.cap}</span>
         </td>
-        <td class="col-pay">${payBtn(p)}</td>
-      </tr>
-    `).join('');
+        <td class="col-pay">${v.btn}</td>
+      </tr>`;
+    }).join('');
     // Mobile cards
-    cards.innerHTML = state.personas.map(p => `
+    cards.innerHTML = state.personas.map(p => {
+      const v = view(p);
+      return `
       <div class="mcard ${p.pagado ? 'row-paid' : ''}">
         <div class="mcard-main">
           <div class="mcard-title">${esc(p.nombre) || '(sin nombre)'}</div>
-          <div class="mcard-sub cobrar-note" data-pid="${p.id}"></div>
+          ${v.note ? `<div class="mcard-sub wrap">${v.note}</div>` : ''}
         </div>
-        <div class="mcard-amt cobrar-amount" data-pid="${p.id}"></div>
-        ${payBtn(p)}
-      </div>
-    `).join('');
+        <div class="mcard-amt ${v.refund ? 'neg' : ''}">${v.amount}<span class="amt-cap">${v.cap}</span></div>
+        ${v.btn}
+      </div>`;
+    }).join('');
   }
 
   function setPagado(id, val) {
@@ -1465,85 +1637,103 @@
     if (!p) return;
     p.pagado = val;
     save();
-    renderCobrar(); // re-render to apply paid-row styling
-    recalc();
+    recalc();   // re-renders Cobrar with the paid-row styling
   }
 
   // ---------------------------------------------------------------------------
   // Calculation (unchanged math)
   // ---------------------------------------------------------------------------
-  function recalc() {
-    const totalGastos = state.gastos.reduce((s, g) => s + (parseFloat(g.precio) || 0), 0);
-    const totalCarne = state.gastos.filter(g => g.esCarne).reduce((s, g) => s + (parseFloat(g.precio) || 0), 0);
+  // Everyone splits the non-meat total; meat-eaters also split the meat total.
+  // Each part rounds UP to whole pesos so people pay round numbers. Whatever a
+  // participant fronted (expenses assigned to them) is credited to them.
+  function computeSplit() {
+    const price = (g) => parseFloat(g.precio) || 0;
+    const totalGastos = state.gastos.reduce((s, g) => s + price(g), 0);
+    const totalCarne = state.gastos.filter(g => g.esCarne).reduce((s, g) => s + price(g), 0);
     const totalSinCarne = totalGastos - totalCarne;
     const nTotal = state.personas.length;
     const nCarne = state.personas.filter(p => p.comeCarne).length;
-
-    document.getElementById('stat-total').textContent = fmt(totalGastos);
-    document.getElementById('stat-carne').textContent = fmt(totalCarne);
-    document.getElementById('stat-sin-carne').textContent = fmt(totalSinCarne);
-    document.getElementById('stat-personas').textContent = nTotal;
-    document.getElementById('stat-comen-carne').textContent = nCarne;
-
-    // Meat to buy: grams/person (configurable in Settings) × people who eat meat.
-    const kilos = nCarne * (kgPorPersona || 0) / 1000;
-    document.getElementById('stat-kg').textContent = fmtKg(kilos);
-    document.getElementById('stat-kg-sub').textContent = kgPorPersona ? `(${kgPorPersona} g c/u)` : '';
-
-    // Round each component UP to whole pesos so people pay round numbers
-    // and the breakdown (base + carne) always adds up to the shown total.
-    const basePorPersona = roundUp(nTotal > 0 ? totalSinCarne / nTotal : 0);
+    const base = roundUp(nTotal > 0 ? totalSinCarne / nTotal : 0);
     const extraCarne = roundUp(nCarne > 0 ? totalCarne / nCarne : 0);
 
-    // How much each participant already fronted (expenses assigned to them).
     const contrib = {};
-    state.gastos.forEach(g => {
-      if (g.paidBy) contrib[g.paidBy] = (contrib[g.paidBy] || 0) + (parseFloat(g.precio) || 0);
-    });
+    state.gastos.forEach(g => { if (g.paidBy) contrib[g.paidBy] = (contrib[g.paidBy] || 0) + price(g); });
 
-    let aCobrar = 0;
-    let cobrado = 0;
-    let pendiente = 0;
-    let sumShares = 0;
-
-    // Update each person's amount in place (no re-render → keeps input focus)
+    const people = {};
     state.personas.forEach(p => {
-      const share = basePorPersona + (p.comeCarne ? extraCarne : 0);
+      const share = base + (p.comeCarne ? extraCarne : 0);
       const paid = contrib[p.id] || 0;
-      const neto = share - paid;   // owes us (positive) / we owe them (negative)
-      sumShares += share;
-      aCobrar += neto;
-      if (p.pagado) cobrado += neto;
-      else pendiente += neto;
-
-      // Fill the Cobrar views (desktop span + mobile card share the data-pid).
-      const amountText = neto >= 0 ? fmt(neto) : '-' + fmt(-neto);
-      let note = '';
-      if (paid > 0) note = `consumo ${fmt(share)} − pagó ${fmt(paid)}` + (neto < 0 ? ' · a favor' : '');
-      document.querySelectorAll('.cobrar-amount[data-pid="' + p.id + '"]').forEach(el => {
-        el.textContent = amountText;
-        el.classList.toggle('neg', neto < 0);
-      });
-      document.querySelectorAll('.cobrar-note[data-pid="' + p.id + '"]').forEach(el => {
-        el.textContent = note;
-        el.style.display = note ? '' : 'none';
-      });
+      people[p.id] = { share, paid, neto: share - paid };   // >0 owes you, <0 you owe them
     });
+    return { totalGastos, totalCarne, totalSinCarne, nTotal, nCarne, base, extraCarne, people };
+  }
 
-    document.getElementById('stat-acobrar').textContent = fmt(aCobrar);
-    document.getElementById('stat-cobrado').textContent = fmt(cobrado);
-    document.getElementById('stat-falta').textContent = fmt(pendiente);
+  function setText(id, text) { document.getElementById(id).textContent = text; }
+  function plural(n, word) { return `${n} ${word}${n !== 1 ? 's' : ''}`; }
 
-    const pendingCount = state.personas.filter(p => !p.pagado).length;
-    document.getElementById('stat-falta-sub').textContent =
-      pendiente > 0.005
-        ? `${pendingCount} persona${pendingCount !== 1 ? 's' : ''}`
-        : (nTotal > 0 ? '¡todo cobrado! ✓' : '');
+  function recalc() {
+    const sp = computeSplit();
+
+    // Step 1 — Gente. Meat to buy: grams/person (Ajustes) × people who eat meat.
+    setText('stat-personas', sp.nTotal);
+    setText('stat-comen-carne', sp.nCarne);
+    setText('stat-kg', fmtKg(sp.nCarne * (kgPorPersona || 0) / 1000));
+    setText('stat-kg-sub', kgPorPersona ? `${kgPorPersona} g c/u ✎` : 'tocá para elegir');
+
+    // Step 2 — Gastos. What one person consumes (before crediting what they fronted).
+    setText('stat-total', fmt(sp.totalGastos));
+    setText('stat-carne', fmt(sp.totalCarne));
+    setText('stat-sin-carne', sp.totalGastos ? `resto ${fmt(sp.totalSinCarne)}` : '');
+    let share = '—', shareSub = 'agregá gente';
+    if (sp.nTotal) {
+      shareSub = '';
+      if (sp.nCarne === 0) share = fmt(sp.base);
+      else {
+        share = fmt(sp.base + sp.extraCarne);
+        if (sp.nCarne < sp.nTotal) shareSub = `sin carne ${fmt(sp.base)}`;
+      }
+    }
+    setText('stat-share', share);
+    setText('stat-share-sub', shareSub);
+
+    // Step 3 — Cobrar. Money owed to you and money you owe back are kept apart
+    // (mixing them used to show a negative "Falta" while people still owed).
+    let porCobrar = 0, cobrado = 0, falta = 0, nFalta = 0, devolver = 0, nDevolver = 0, hayDevolver = false, sumShares = 0;
+    state.personas.forEach(p => {
+      const { share: sh, neto } = sp.people[p.id];
+      sumShares += sh;
+      if (neto < -0.005) {
+        hayDevolver = true;
+        if (!p.pagado) { devolver += -neto; nDevolver++; }
+      } else {
+        porCobrar += neto;
+        if (p.pagado) cobrado += neto;
+        else if (neto > 0.005) { falta += neto; nFalta++; }
+      }
+    });
+    const ready = sp.nTotal > 0 && sp.totalGastos > 0;
+    setText('stat-falta', fmt(falta));
+    document.getElementById('stat-falta').classList.toggle('red', falta > 0.005);
+    setText('stat-falta-sub', nFalta ? plural(nFalta, 'persona') : (ready ? '¡todo cobrado! ✓' : ''));
+    setText('stat-cobrado', fmt(cobrado));
+    setText('stat-cobrado-sub', porCobrar > 0.005 ? `de ${fmt(porCobrar)}` : '');
+    document.getElementById('hero-devolver').hidden = !hayDevolver;
+    setText('stat-devolver', fmt(devolver));
+    setText('stat-devolver-sub', nDevolver ? plural(nDevolver, 'persona') : '✓ devuelto');
 
     // Round-up means shares collect a little more than spent — show the surplus.
-    const sobra = sumShares - totalGastos;
-    document.getElementById('stat-sobra').textContent =
-      sobra > 0.005 ? `Sobra ${fmt(sobra)} por redondeo` : '';
+    const sobra = sumShares - sp.totalGastos;
+    setText('stat-sobra', ready && sobra > 0.005 ? `Sobran ${fmt(sobra)} por redondeo` : '');
+
+    // Live status under each step tab.
+    setText('tabsub-gente', plural(sp.nTotal, 'persona'));
+    setText('tabsub-gastos', fmt(sp.totalGastos));
+    setText('tabsub-cobrar', !ready ? '—'
+      : falta > 0.005 ? `falta ${fmt(falta)}`
+      : devolver > 0.005 ? `devolver ${fmt(devolver)}`
+      : '✓ listo');
+
+    renderCobrar(sp);
   }
 
   // Kilos with up to 2 decimals, es-AR (e.g. 2,4 kg).
@@ -1569,13 +1759,15 @@
     return '$' + v.toLocaleString('es-AR', { minimumFractionDigits: isInt ? 0 : 2, maximumFractionDigits: 2 });
   }
 
-  function resetAll() {
-    if (!confirm('¿Borrar todos los gastos y personas de este asado?')) return;
+  async function resetAll() {
+    if (!(await askConfirm('¿Borrar todos los gastos y personas de este asado?', { ok: 'Vaciar' }))) return;
     state = { gastos: [], personas: [] };
     save();
     renderGastos();
     renderParticipants();
     recalc();
+    closeSettings();
+    showTab('gente');
   }
 
   function renderAll() {
@@ -1595,20 +1787,41 @@
     try { localStorage.setItem('asado-tab', name); } catch (e) {}
   }
 
+  // Land on the step that needs attention: nobody yet → Gente; people but no
+  // expenses → Gastos; otherwise wherever the user last was.
+  function pickStep() {
+    if (!state.personas.length) return 'gente';
+    if (!state.gastos.length) return 'gastos';
+    return savedStep();
+  }
+  function savedStep() {
+    let t = null;
+    try { t = localStorage.getItem('asado-tab'); } catch (e) {}
+    return ['gente', 'gastos', 'cobrar'].includes(t) ? t : 'gente';
+  }
+
   // ---------------------------------------------------------------------------
   // Online mode: asados list + load + create + rename + delete
   // ---------------------------------------------------------------------------
   function renderAsadoSelect() {
     const sel = document.getElementById('asado-select');
     sel.innerHTML = asados.map(a => {
-      const label = (a.name || 'Asado') + (a.event_date ? ' · ' + a.event_date : '');
+      const label = (a.name || 'Asado') + (a.event_date ? ' · ' + fmtDate(a.event_date) : '');
       return `<option value="${esc(a.id)}" ${a.id === currentId ? 'selected' : ''}>${esc(label)}</option>`;
     }).join('');
   }
 
+  // "2026-10-04" → "4/10" (with the year when it isn't this year).
+  function fmtDate(v) {
+    const d = isoDay(v);
+    if (!d) return '';
+    const [y, m, day] = d.split('-').map(Number);
+    return `${day}/${m}` + (y !== new Date().getFullYear() ? '/' + y : '');
+  }
+
   function reflectMode() {
     const online = apiEnabled();
-    document.getElementById('tb-online').style.display = online ? 'inline-flex' : 'none';
+    document.getElementById('tb-online').style.display = online ? 'flex' : 'none';
     document.getElementById('tb-offline').style.display = online ? 'none' : 'inline-flex';
     setSaveStatus('saved', 'Conectado');
     if (!online) document.getElementById('save-status').style.display = 'none';
@@ -1639,6 +1852,7 @@
     }
     renderAsadoSelect();
     renderAll();
+    showTab(pickStep());
   }
 
   async function createAsado(name, date) {
@@ -1652,19 +1866,21 @@
     persistLocal();
     renderAsadoSelect();
     renderAll();
+    showTab('gente');   // a new asado starts by adding who's coming
     return id;
   }
 
   async function deleteCurrentAsado() {
     if (!currentId) return;
     const a = asados.find(x => x.id === currentId);
-    if (!confirm('¿Borrar el asado "' + (a ? a.name : '') + '"? No se puede deshacer.')) return;
+    if (!(await askConfirm('¿Borrar el asado "' + (a ? a.name : '') + '"? No se puede deshacer.', { ok: 'Borrar asado' }))) return;
     try {
       await api('DELETE', '/api/asados/' + encodeURIComponent(currentId));
-    } catch (e) { alert('No se pudo borrar: ' + e.message); return; }
+    } catch (e) { showNotice('No se pudo borrar: ' + e.message); return; }
     try { localStorage.removeItem(cachePrefix(currentId)); } catch (_) {}
     asados = asados.filter(x => x.id !== currentId);
     clearTimeout(saveTimer);
+    closeAsadoModal();
     if (asados.length) {
       await loadAsado(asados[0].id);
     } else {
@@ -1742,7 +1958,7 @@
   async function deleteRosterPerson(id) {
     const r = roster.find(x => x.id === id);
     const label = r && rosterFullName(r) ? `"${rosterFullName(r)}"` : 'esta persona';
-    if (!confirm('¿Quitar ' + label + ' del roster guardado?')) return;
+    if (!(await askConfirm('¿Quitar ' + label + ' del roster guardado?', { ok: 'Quitar' }))) return;
     roster = roster.filter(r => r.id !== id);
     renderRoster();
     updateDatalist();
@@ -1752,7 +1968,9 @@
   // ---------------------------------------------------------------------------
   // Settings modal
   // ---------------------------------------------------------------------------
-  function openSettings() {
+  function openSettings(focus) {
+    // Connection is collapsed unless there's none yet (the served app auto-connects).
+    document.getElementById('conn-details').open = !apiEnabled();
     document.getElementById('cfg-url').value = cfg.baseUrl || '';
     document.getElementById('cfg-token').value = cfg.token || '';
     document.getElementById('cfg-test').textContent = '';
@@ -1774,6 +1992,7 @@
       : 'Hay datos locales, pero primero guardá una conexión al servidor para poder importarlos.';
     document.getElementById('migrate-result').textContent = '';
     document.getElementById('settings-overlay').classList.add('open');
+    if (focus === 'kg') setTimeout(() => { const k = document.getElementById('kg-input'); k.focus(); k.select(); }, 30);
   }
   function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
 
@@ -1845,14 +2064,17 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Asado new/rename modal
+  // Asado new/edit modal
   // ---------------------------------------------------------------------------
   let asadoModalMode = 'new';
   function openAsadoModal(mode) {
     asadoModalMode = mode;
-    document.getElementById('asado-modal-title').textContent = mode === 'new' ? 'Nuevo asado' : 'Renombrar asado';
-    document.getElementById('asado-name').value = mode === 'rename' ? (currentMeta.name || '') : '';
-    document.getElementById('asado-date').value = mode === 'rename' ? (currentMeta.event_date || '') : '';
+    const editing = mode === 'edit';
+    document.getElementById('asado-modal-title').textContent = editing ? 'Editar asado' : 'Nuevo asado';
+    document.getElementById('asado-name').value = editing ? (currentMeta.name || '') : '';
+    setCalValue(editing ? isoDay(currentMeta.event_date) : null);
+    toggleCal(false);
+    document.getElementById('asado-delete-btn').style.display = editing ? '' : 'none';
     document.getElementById('asado-modal-result').textContent = '';
     document.getElementById('asado-overlay').classList.add('open');
     setTimeout(() => document.getElementById('asado-name').focus(), 30);
@@ -1861,7 +2083,7 @@
 
   async function submitAsadoModal() {
     const name = document.getElementById('asado-name').value.trim();
-    const date = document.getElementById('asado-date').value || null;
+    const date = calValue;
     const out = document.getElementById('asado-modal-result');
     out.className = 'test-result';
     if (!name) { out.className = 'test-result bad'; out.textContent = 'Poné un nombre.'; return; }
@@ -1877,10 +2099,87 @@
         renderAsadoSelect();
       }
       closeAsadoModal();
+      if (asadoModalMode === 'new') onAddPersona();   // step 1 right away: pick who's coming
     } catch (e) {
       out.className = 'test-result bad';
       out.textContent = '✕ ' + e.message;
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Asado date calendar (dd/mm/aaaa, Monday-first). Value is 'YYYY-MM-DD' or null.
+  // ---------------------------------------------------------------------------
+  const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
+                 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  let calValue = null;
+  let calView = { y: 2026, m: 0 };   // month on screen (m is 0-11)
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function isoOf(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; }
+  function todayIso() { const t = new Date(); return isoOf(t.getFullYear(), t.getMonth(), t.getDate()); }
+
+  function setCalValue(iso) {
+    calValue = iso || null;
+    const label = document.getElementById('asado-date-label');
+    if (calValue) {
+      const [y, m, d] = calValue.split('-');
+      label.textContent = `${d}/${m}/${y}`;
+    } else {
+      label.textContent = 'Sin fecha';
+    }
+    label.classList.toggle('empty', !calValue);
+  }
+
+  function toggleCal(force) {
+    const cal = document.getElementById('cal');
+    const open = force != null ? force : cal.hidden;
+    if (open) {
+      const [y, m] = (calValue || todayIso()).split('-').map(Number);
+      calView = { y, m: m - 1 };
+      renderCal();
+    }
+    cal.hidden = !open;
+    document.getElementById('asado-date-btn').setAttribute('aria-expanded', open);
+  }
+
+  function calShift(delta) {
+    let { y, m } = calView;
+    m += delta;
+    if (m < 0) { m = 11; y--; }
+    if (m > 11) { m = 0; y++; }
+    calView = { y, m };
+    renderCal();
+  }
+
+  function renderCal() {
+    const { y, m } = calView;
+    const lead = (new Date(y, m, 1).getDay() + 6) % 7;   // blanks before the 1st (Monday-first)
+    const days = new Date(y, m + 1, 0).getDate();
+    const today = todayIso();
+    let cells = '<span></span>'.repeat(lead);
+    for (let d = 1; d <= days; d++) {
+      const iso = isoOf(y, m, d);
+      const cls = 'cal-day' + (iso === calValue ? ' sel' : '') + (iso === today ? ' today' : '');
+      cells += `<button type="button" class="${cls}" aria-label="${d} de ${MESES[m]} de ${y}"
+        ${iso === calValue ? 'aria-pressed="true"' : ''} onclick="pickCalDay('${iso}')">${d}</button>`;
+    }
+    document.getElementById('cal').innerHTML = `
+      <div class="cal-head">
+        <button type="button" class="cal-nav" aria-label="Mes anterior" onclick="calShift(-1)">‹</button>
+        <span class="cal-title">${MESES[m]} ${y}</span>
+        <button type="button" class="cal-nav" aria-label="Mes siguiente" onclick="calShift(1)">›</button>
+      </div>
+      <div class="cal-grid cal-dow">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(d => `<span>${d}</span>`).join('')}</div>
+      <div class="cal-grid">${cells}</div>
+      <div class="cal-foot">
+        <button type="button" class="btn btn-ghost" onclick="pickCalDay(todayIso())">Hoy</button>
+        <button type="button" class="btn btn-ghost" onclick="pickCalDay(null)">Sin fecha</button>
+      </div>`;
+  }
+
+  function pickCalDay(iso) {
+    setCalValue(iso);
+    toggleCal(false);
   }
 
   // ---------------------------------------------------------------------------
@@ -1906,6 +2205,9 @@
       document.getElementById('gm-desc').value = g.nombre || '';
       document.getElementById('gm-price').value = (g.precio === '' || g.precio == null) ? '' : g.precio;
     }
+    // New: "+ Otro" for fast entry; nothing to delete yet. Edit: the reverse.
+    document.getElementById('gm-delete').style.display = editingGastoId ? '' : 'none';
+    document.getElementById('gm-another').style.display = editingGastoId ? 'none' : '';
     gmReflect();
     document.getElementById('gasto-overlay').classList.add('open');
     setTimeout(() => document.getElementById('gm-desc').focus(), 30);
@@ -1938,7 +2240,8 @@
 
   function closeGastoModal() { document.getElementById('gasto-overlay').classList.remove('open'); }
 
-  function gmSave() {
+  // `another` (new gastos only): save, then reopen a blank form for the next one.
+  function gmSave(another) {
     const nombre = document.getElementById('gm-desc').value;
     const raw = document.getElementById('gm-price').value;
     const precio = raw === '' ? '' : (parseFloat(raw) || 0);
@@ -1951,12 +2254,13 @@
     save();
     renderGastos();
     recalc();
-    closeGastoModal();
+    if (another && !editingGastoId) openGastoModal('new');
+    else closeGastoModal();
   }
 
-  function gmDelete() {
+  async function gmDelete() {
     if (editingGastoId) {
-      if (!confirm('¿Borrar este gasto?')) return;
+      if (!(await askConfirm('¿Borrar este gasto?'))) return;
       delGasto(editingGastoId);
     }
     closeGastoModal();
@@ -1984,6 +2288,7 @@
       document.getElementById('pm-name').value = p.nombre || '';
     }
     // Offer "save to roster" only online and when not already linked.
+    document.getElementById('pm-delete').style.display = p ? '' : 'none';
     const showRoster = apiEnabled() && (!p || !p.personId);
     document.getElementById('pm-roster-field').style.display = showRoster ? 'block' : 'none';
     const nameInput = document.getElementById('pm-name');
@@ -2031,9 +2336,9 @@
     closePersonaModal();
   }
 
-  function pmDelete() {
+  async function pmDelete() {
     if (editingPersonaId) {
-      if (!confirm('¿Borrar esta persona?')) return;
+      if (!(await askConfirm('¿Borrar esta persona?'))) return;
       delPersona(editingPersonaId);
     }
     closePersonaModal();
@@ -2041,7 +2346,7 @@
 
   async function pmSaveToRoster() {
     const nombre = document.getElementById('pm-name').value.trim();
-    if (!nombre) { alert('Poné un nombre antes de guardarlo en el roster.'); return; }
+    if (!nombre) { showNotice('Poné un nombre antes de guardarlo en el roster.'); return; }
     const p = pmEnsurePersona();
     if (!p) return;
     p.nombre = nombre;
@@ -2050,12 +2355,45 @@
     document.getElementById('pm-roster-field').style.display = 'none';
   }
 
+  // ---------------------------------------------------------------------------
+  // Confirm / notice dialog (replaces confirm() and alert(), which some
+  // embedded browsers block). askConfirm resolves true on OK, false otherwise.
+  // ---------------------------------------------------------------------------
+  let confirmResolve = null;
+  function askConfirm(message, { ok = 'Borrar', notice = false } = {}) {
+    if (confirmResolve) closeConfirm(false);
+    document.getElementById('confirm-msg').textContent = message;
+    const okBtn = document.getElementById('confirm-ok');
+    okBtn.textContent = ok;
+    okBtn.className = 'btn btn-row ' + (notice ? 'btn-primary' : 'btn-danger-solid');
+    document.getElementById('confirm-cancel').style.display = notice ? 'none' : '';
+    document.getElementById('confirm-overlay').classList.add('open');
+    setTimeout(() => okBtn.focus(), 30);
+    return new Promise(resolve => { confirmResolve = resolve; });
+  }
+  function showNotice(message) { return askConfirm(message, { ok: 'Entendido', notice: true }); }
+  function closeConfirm(result) {
+    document.getElementById('confirm-overlay').classList.remove('open');
+    const resolve = confirmResolve;
+    confirmResolve = null;
+    if (resolve) resolve(result);
+  }
+
+  function closeOverlay(ov) {
+    if (ov.id === 'confirm-overlay') closeConfirm(false);
+    else ov.classList.remove('open');
+  }
   // Close modals on overlay backdrop click
   document.querySelectorAll('.overlay').forEach(ov => {
-    ov.addEventListener('click', (e) => { if (e.target === ov) ov.classList.remove('open'); });
+    ov.addEventListener('click', (e) => { if (e.target === ov) closeOverlay(ov); });
   });
+  // Escape closes only the topmost dialog (e.g. a confirm over the gasto editor).
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') document.querySelectorAll('.overlay.open').forEach(o => o.classList.remove('open'));
+    if (e.key !== 'Escape') return;
+    const open = [...document.querySelectorAll('.overlay.open')];
+    if (!open.length) return;
+    const z = (el) => parseInt(getComputedStyle(el).zIndex, 10) || 0;
+    closeOverlay(open.reduce((top, el) => (z(el) >= z(top) ? el : top)));
   });
 
   // ---------------------------------------------------------------------------
@@ -2083,6 +2421,7 @@
       addGasto('Tablas', 21, false);
       addGasto('Carbón', 60, false);
     }
+    showTab(pickStep());
   }
 
   async function initOnline() {
@@ -2115,17 +2454,13 @@
   } catch (e) {}
   document.getElementById('kg-input').value = kgPorPersona;
   reflectMode();
+  // Show the last step right away; init then moves to the step that needs attention.
+  showTab(savedStep());
   if (apiEnabled()) {
     initOnline();
   } else {
     initOffline();
   }
-
-  let savedTab = 'gastos';
-  try { savedTab = localStorage.getItem('asado-tab') || 'gastos'; } catch (e) {}
-  if (savedTab === 'personas') savedTab = 'gente';    // legacy tab name
-  if (savedTab === 'roster') savedTab = 'gastos';     // roster moved into Settings
-  showTab(savedTab);
 </script>
 </body>
 </html>

@@ -98,22 +98,42 @@ Primary keys are **client-supplied text ids** (frontend already generates them),
 
 All built into `web/index.html` (still a single vanilla-JS file):
 
-1. **Settings** ✅ — gear (⚙️) opens a modal to set API base URL + token (saved in
-   localStorage under `asado-api-config`), with a "Probar conexión" test and a
-   "Modo offline" button. Unset → app runs in offline localStorage mode (unchanged).
-2. **Asado selector** ✅ — toolbar `<select>` to pick an asado, plus ＋ new / ✎ rename
-   / 🗑 delete. Loads `GET /api/asados/:id` into state; remembers the last one.
+1. **Settings** ✅ — gear (⚙️) opens "Ajustes": grams of meat per person, roster
+   management, import, "Vaciar este asado", and a collapsed "Conexión" section to set
+   API base URL + token (saved in localStorage under `asado-api-config`), with a
+   "Probar conexión" test and a "Modo offline" button. Unset → offline localStorage mode.
+2. **Asado selector** ✅ — toolbar `<select>` to pick an asado, plus ＋ new / ✎ edit
+   (name, date, and "Borrar asado"). The date uses a built-in dd/mm/aaaa,
+   Monday-first calendar (native date inputs follow the browser locale). Loads `GET /api/asados/:id`; remembers the last one.
 3. **Save** ✅ — `save()` writes a localStorage cache immediately, then debounces
    (700ms) a `PUT /api/asados/:id` of the whole state. A status dot shows
    saving/saved/error; on error it falls back to the local cache.
 4. **Roster recall** ✅ — participant name inputs autocomplete from `GET /api/people`
    via a `<datalist>`; an exact name match links `person_id` and copies `come_carne`
-   (● marks linked rows). A "📒 Roster" tab (online only) manages saved people.
+   (● marks linked rows). Saved people are managed in Ajustes (online only).
 5. **Migration** ✅ — Settings → "Importar datos locales" creates a new "Importado"
    asado from the old localStorage data (non-destructive).
 
-Preserved: tabs, always-visible Resumen, round-up math, paid-row styling,
-Enter-to-add, accessibility (aria labels / pressed states).
+Preserved: round-up math, paid-row styling, Enter-to-add, accessibility
+(aria labels / pressed states).
+
+## UX flow (2026-10-05 redesign)
+
+The app follows how an asado actually goes: **create the asado → 1 · Gente →
+2 · Gastos → 3 · Cobrar**. Keep new UI aligned with this order.
+
+- The three steps are numbered tabs (a fixed bottom bar on phones), each with a live
+  status line ("4 personas", "$68.000", "falta $20.750").
+- Each step has its own summary tiles instead of one always-visible Resumen:
+  Gente → personas / comen carne / kg to buy; Gastos → total / carne / share per
+  person; Cobrar → falta cobrar / cobrado / a devolver.
+- Creating an asado lands on Gente with the people picker open. Loading an asado
+  jumps to the step that needs attention (no people → Gente, no gastos → Gastos).
+- "Siguiente →" buttons under Gente and Gastos move to the next step.
+- Cobrar separates money owed to you ("Cobrar", "te debe") from money you owe back
+  to people who fronted more than their share ("Devolver", "le devolvés").
+- Phones: lists are read-only cards; tap a card to edit it in a modal. The new-gasto
+  modal has "+ Otro" for entering several expenses in a row.
 
 ## Live deployment (as built)
 
